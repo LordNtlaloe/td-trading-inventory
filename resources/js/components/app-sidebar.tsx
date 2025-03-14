@@ -13,16 +13,17 @@ const mainNavItems: NavItem[] = [
         href: '/dashboard',
         icon: LayoutGrid,
     },
+        {
+        title: 'Products',
+        href: '/products',
+        icon: Package,
+    },
     {
         title: 'Branches',
         href: '/branches',
         icon: MapPinIcon,
     },
-    {
-        title: 'Products',
-        href: '/products',
-        icon: Package,
-    },
+
 ];
 
 const footerNavItems: NavItem[] = [
@@ -44,7 +45,7 @@ export function AppSidebar() {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton size="lg" asChild className='rounded-lg'>
                             <Link href="/dashboard" prefetch>
                                 <AppLogo />
                             </Link>

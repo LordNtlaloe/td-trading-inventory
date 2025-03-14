@@ -62,6 +62,10 @@ class BranchesController extends Controller
     public function edit(string $id)
     {
         $branch = Branch::find($id);
+        if (!$branch) {
+            // Instead of returning a plain JSON response, return an Inertia response.
+            return Inertia::render('branches/error', ['message' => 'Branch Does Not Exist']);
+        }
         return Inertia::render('branches/edit-branch', [
             "branch" => $branch
         ]);
@@ -78,6 +82,10 @@ class BranchesController extends Controller
         ]);
 
         $branch = Branch::find($id);
+        if (!$branch) {
+            // Instead of returning a plain JSON response, return an Inertia response.
+            return Inertia::render('branches/error', ['message' => 'Branch Does Not Exist']);
+        }
         $branch->branch_name = $request->branch_name;
         $branch->branch_location = $request->branch_location;
         $branch->save();

@@ -1,0 +1,10 @@
+[build]
+  base = "/"
+  command = "composer install && npm run prod && php artisan config:cache && php artisan route:cache"
+  publish = "public"
+
+[[redirects]]
+  from = "/{any}"
+  to = "/index.php"
+  status = 200
+  force = true
