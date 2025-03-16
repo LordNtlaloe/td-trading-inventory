@@ -15,7 +15,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { PenIcon, Trash2Icon } from "lucide-react";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Products', href: '/products' }];
 
@@ -27,16 +27,25 @@ type Products = {
     product_category: string;
     product_commodity: string;
     product_grade: string;
+    branch: {
+        branch_location: string;
+    };
 };
 
 export default function Products() {
     const { filtered_products, all_products } = usePage<{ filtered_products: Products[], all_products: Products[] }>().props;
     const [search, setSearch] = useState('');
-    
-    const displayedProducts = search.length > 0 
-        ? filtered_products.filter(p => p.product_name.toLowerCase().includes(search.toLowerCase())) 
+    const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const displayedProducts = search.length > 0
+        ? filtered_products.filter(p => p.product_name.toLowerCase().includes(search.toLowerCase()))
         : filtered_products;
 
+    useEffect(() => {
+        if (alert) {
+            const timeout = setTimeout(() => setAlert(null), 3000); // Hide alert after 3 seconds
+            return () => clearTimeout(timeout);
+        }
+    }, [alert]);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Products" />
@@ -44,11 +53,11 @@ export default function Products() {
             <ProductsLayout>
                 <div className="space-y-2">
                     <div className="flex justify-between">
-                        <Input 
-                            className="w-1/4" 
-                            placeholder="Search" 
-                            value={search} 
-                            onChange={(e) => setSearch(e.target.value)} 
+                        <Input
+                            className="w-1/4"
+                            placeholder="Search"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                         <Link href="/products/create" className="cursor-pointer">
                             <Button className="cursor-pointer" variant="secondary">Add New Product</Button>
@@ -67,6 +76,7 @@ export default function Products() {
                                     <TableHead>Category</TableHead>
                                     <TableHead>Commodity</TableHead>
                                     <TableHead>Grade</TableHead>
+                                    <TableHead>Location</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -78,7 +88,7 @@ export default function Products() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    displayedProducts.map(({ id, product_name, product_price, product_quantity, product_category, product_commodity, product_grade }) => (
+                                    displayedProducts.map(({ id, product_name, product_price, product_quantity, product_category, product_commodity, product_grade, branch }) => (
                                         <TableRow key={id}>
                                             <TableCell className="font-medium">{id}</TableCell>
                                             <TableCell>{product_name}</TableCell>
@@ -87,6 +97,7 @@ export default function Products() {
                                             <TableCell>{product_category}</TableCell>
                                             <TableCell>{product_commodity}</TableCell>
                                             <TableCell>{product_grade}</TableCell>
+                                            <TableCell>{branch?.branch_location}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex gap-2 justify-end">
                                                     <Button variant="outline">

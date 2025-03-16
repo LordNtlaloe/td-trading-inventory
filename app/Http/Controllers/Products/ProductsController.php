@@ -14,21 +14,22 @@ class ProductsController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-    {
-        $branchId = $request->query('branch_id');
+{
+    $branchId = $request->query('branch_id');
 
-        $productsQuery = Products::query();
+    $productsQuery = Products::with('branch'); // Eager load branch details
 
-        if ($branchId && $branchId !== 'all') {
-            $productsQuery->where('branch_id', $branchId);
-        }
-
-        return Inertia::render('products/index', [
-            'all_products' => Products::all(), // Unfiltered products
-            'filtered_products' => $productsQuery->get(), // Filtered by branch
-            'branches' => Branch::select('id', 'branch_name')->get(),
-        ]);
+    if ($branchId && $branchId !== 'all') {
+        $productsQuery->where('branch_id', $branchId);
     }
+
+    return Inertia::render('products/index', [
+        'all_products' => Products::with('branch')->get(), // Include branch details
+        'filtered_products' => $productsQuery->get(), // Filtered by branch
+        'branches' => Branch::select('id', 'branch_name')->get(),
+    ]);
+}
+
 
 
     /**
@@ -89,11 +90,13 @@ class ProductsController extends Controller
     public function edit(string $id)
     {
         $product = Products::find($id);
+        $branches = Branch::all();
         if (!$product) {
-            return Inertia::render('product.errors', ["message" => "Product Does Not Exist"]);
+            return Inertia::render('products/index')->with('error', 'Product Not Found');
         }
         return Inertia::render("products/edit", [
-            "product" => $product
+            "product" => $product,
+            "branches" => $branches
         ]);
     }
 

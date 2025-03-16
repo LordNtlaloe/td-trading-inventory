@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import InputError from '@/components/input-error';
 import { Label } from '@/components/ui/label';
 import { InfoIcon, LoaderCircle } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -57,6 +57,13 @@ export default function CreateProduct() {
             onError: () => setAlert({ message: 'Failed to create product.', type: 'error' }),
         });
     };
+
+    useEffect(() => {
+        if (alert) {
+            const timeout = setTimeout(() => setAlert(null), 3000); // Hide alert after 3 seconds
+            return () => clearTimeout(timeout);
+        }
+    }, [alert]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -169,10 +176,10 @@ export default function CreateProduct() {
                                     </SelectContent>
                                 </Select>
                                 <InputError message={errors.product_commodity} />
+                            <div className="grid gap-2">
                             </div>
 
                             {/* Grade Selection */}
-                            <div className="grid gap-2">
                                 <Label htmlFor="product_grade">Grade</Label>
                                 <Select
                                     value={data.product_grade}

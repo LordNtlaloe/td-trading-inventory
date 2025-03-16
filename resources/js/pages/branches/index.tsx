@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PenIcon, InfoIcon, Trash2Icon } from "lucide-react";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Branches', href: '/branches' },
@@ -30,6 +30,7 @@ type Branch = {
 
 export default function Branches() {
   const { branches } = usePage<{ branches: Branch[] }>().props;
+  const { success, error } = usePage<{ success?: string; error?: string }>().props;
   const { delete: destroy } = useForm();
   const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -48,6 +49,15 @@ export default function Branches() {
       setAlert({ message: 'An error occurred.', type: 'error' });
     }
   };
+
+  useEffect(() => {
+          if (success) {
+              setAlert({ message: success, type: "success" });
+          }
+          else if (error) {
+              setAlert({ message: error, type: "error" });
+          }
+      }, [success, error])
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
@@ -104,9 +114,9 @@ export default function Branches() {
 
         {/* Alert Component */}
         {alert && (
-          <Alert className={`h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+          <Alert className={`z-50 h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
             <InfoIcon className="h-4 w-4" />
-            <AlertTitle className='pb-2'>{alert.type}</AlertTitle>
+            <AlertTitle className='pb-2'>{alert.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
             <AlertDescription className='text-white pb-4'>
               {alert.message}
             </AlertDescription>

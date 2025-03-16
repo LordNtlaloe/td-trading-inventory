@@ -19,4 +19,9 @@ class Products extends Model
         'product_grade',
 
     ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

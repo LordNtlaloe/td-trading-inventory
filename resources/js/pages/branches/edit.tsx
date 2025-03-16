@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import InputError from '@/components/input-error';
 import { Label } from '@/components/ui/label'; // Update Label import
 import { InfoIcon, LoaderCircle } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -49,7 +49,7 @@ const lesothoDistricts = [
 export default function Branches() {
     // Change the type of `branch` to be a single object, not an array
     const { branch } = usePage<{ branch: Branch }>().props;
-
+    const { success, error } = usePage<{ success?: string; error?: string }>().props;
     const { data, setData, put, processing, errors, reset } = useForm<Required<CreateBranchForm>>({
         branch_name: branch.branch_name || '',
         branch_location: branch.branch_location || '',
@@ -65,6 +65,15 @@ export default function Branches() {
             onError: () => setAlert({ message: 'Failed to update branch.', type: 'error' }),
         });
     };
+
+    useEffect(() => {
+        if (success) {
+            setAlert({ message: success, type: "success" });
+        }
+        else if (error) {
+            setAlert({ message: error, type: "error" });
+        }
+    }, [success, error])
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -129,9 +138,9 @@ export default function Branches() {
 
                 {/* Alert Component */}
                 {alert && (
-                    <Alert className={`h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+                    <Alert className={`z-50 h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
                         <InfoIcon className="h-4 w-4" />
-                        <AlertTitle className='pb-2'>{alert.type}</AlertTitle>
+                        <AlertTitle className='pb-2'>{alert.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
                         <AlertDescription className='text-white pb-4'>
                             {alert.message}
                         </AlertDescription>

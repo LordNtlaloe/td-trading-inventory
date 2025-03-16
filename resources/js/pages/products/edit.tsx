@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import InputError from '@/components/input-error';
 import { Label } from '@/components/ui/label';
 import { InfoIcon, LoaderCircle } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -40,7 +40,12 @@ export default function EditProduct() {
             onError: () => setAlert({ message: 'Failed to update product.', type: 'error' }),
         });
     };
-
+    useEffect(() => {
+        if (alert) {
+            const timeout = setTimeout(() => setAlert(null), 3000); // Hide alert after 3 seconds
+            return () => clearTimeout(timeout);
+        }
+    }, [alert]);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Product" />
@@ -139,7 +144,7 @@ export default function EditProduct() {
                     </div>
                 </form>
                 {alert && (
-                    <Alert className={`h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+                    <Alert className={`z-50 h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
                         <InfoIcon className="h-4 w-4" />
                         <AlertTitle>{alert.type}</AlertTitle>
                         <AlertDescription>{alert.message}</AlertDescription>

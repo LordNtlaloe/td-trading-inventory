@@ -15,6 +15,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('pos', function () {
+        return Inertia::render('pos');
+    })->name('pos');
+});
+
 Route::resource('branches', BranchesController::class)->middleware(['auth', 'verified']); 
 Route::resource('products', ProductsController::class)->middleware(['auth', 'verified']);
 
