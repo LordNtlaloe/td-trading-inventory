@@ -11,11 +11,12 @@ type Branch = {
 };
 
 export default function ProductsLayout({ children }: PropsWithChildren) {
+    const { branches } = usePage<{ branches: Branch[] }>().props;
+
     if (typeof window === 'undefined') {
         return null;
     }
 
-    const { branches } = usePage<{ branches: Branch[] }>().props;
     const currentPath = window.location.pathname + window.location.search;
 
     return (

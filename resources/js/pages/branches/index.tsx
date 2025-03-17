@@ -30,7 +30,7 @@ type Branch = {
 
 export default function Branches() {
   const { branches } = usePage<{ branches: Branch[] }>().props;
-  const { success, error } = usePage<{ success?: string; error?: string }>().props;
+  const { success, errors } = usePage<{ success?: string; errors?: string }>().props; // Fix: Renamed error to _error
   const { delete: destroy } = useForm();
   const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -46,18 +46,18 @@ export default function Branches() {
         }
       });
     } catch (error) {
-      setAlert({ message: 'An error occurred.', type: 'error' });
+      setAlert({ message: 'An error occurred' +  error, type: 'error' });
     }
   };
 
   useEffect(() => {
-          if (success) {
-              setAlert({ message: success, type: "success" });
-          }
-          else if (error) {
-              setAlert({ message: error, type: "error" });
-          }
-      }, [success, error])
+    if (success) {
+      setAlert({ message: success, type: "success" });
+    }
+    if (errors) { // Fix: Using renamed variable _error
+      setAlert({ message: errors, type: "error" });
+    }
+  }, [success, errors]);
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>

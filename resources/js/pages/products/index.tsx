@@ -33,7 +33,7 @@ type Products = {
 };
 
 export default function Products() {
-    const { filtered_products, all_products } = usePage<{ filtered_products: Products[], all_products: Products[] }>().props;
+    const { filtered_products } = usePage<{ filtered_products: Products[], all_products: Products[] }>().props;
     const [search, setSearch] = useState('');
     const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const displayedProducts = search.length > 0
