@@ -14,21 +14,21 @@ class ProductsController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-{
-    $branchId = $request->query('branch_id');
+    {
+        $branchId = $request->query('branch_id');
 
-    $productsQuery = Products::with('branch'); // Eager load branch details
+        $productsQuery = Products::with('branch'); // Eager load branch details
 
-    if ($branchId && $branchId !== 'all') {
-        $productsQuery->where('branch_id', $branchId);
+        if ($branchId && $branchId !== 'all') {
+            $productsQuery->where('branch_id', $branchId);
+        }
+
+        return Inertia::render('products/index', [
+            'all_products' => Products::with('branch')->get(), // Include branch details
+            'filtered_products' => $productsQuery->get(), // Filtered by branch
+            'branches' => Branch::select('id', 'branch_name')->get(),
+        ]);
     }
-
-    return Inertia::render('products/index', [
-        'all_products' => Products::with('branch')->get(), // Include branch details
-        'filtered_products' => $productsQuery->get(), // Filtered by branch
-        'branches' => Branch::select('id', 'branch_name')->get(),
-    ]);
-}
 
 
 
