@@ -18,8 +18,6 @@ return new class extends Migration
             $table->integer("product_quantity");
             $table->string("product_category");
             $table->foreignId("branch_id")->constrained('branches')->onDelete('cascade');
-            $table->string("product_commodity");
-            $table->string("product_grade");
             $table->timestamps();
             $table->enum('product_commodity', ['New Tyre', 'Used Tyre']);
             $table->enum('product_grade', ['A', 'B', 'C']);
