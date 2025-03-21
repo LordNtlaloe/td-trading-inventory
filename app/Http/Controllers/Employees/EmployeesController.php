@@ -4,9 +4,14 @@ namespace App\Http\Controllers\Employees;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use App\Models\Employee;
+use App\Models\User;
+use App\Models\Branch;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class EmployeesController extends Controller
 {
@@ -15,8 +20,20 @@ class EmployeesController extends Controller
      */
     public function index()
     {
+        $employees = Employee::with(['user', 'branch'])
+            ->get()
+            ->map(function ($employee) {
+                return [
+                    'id' => $employee->id,
+                    'employee_name' => $employee->user->name,
+                    'employee_location' => $employee->branch->branch_name,
+                    'user_id' => $employee->user_id,
+                    'branch_id' => $employee->branch_id,
+                ];
+            });
+
         return Inertia::render('employees/index', [
-            'employees' => Employee::all()
+            'employees' => $employees
         ]);
     }
 
@@ -25,7 +42,9 @@ class EmployeesController extends Controller
      */
     public function create()
     {
-        return Inertia::render('employeee/create');
+        return Inertia::render('employees/create', [
+            'branches' => Branch::all()
+        ]);
     }
 
     /**
@@ -34,16 +53,42 @@ class EmployeesController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            "user_id" => "required|numeric",
-            "branch_id" => "required|numeric"
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'branch_id' => 'required|exists:branches,id',
         ]);
 
-        Employee::create([
-            "user_id" => $request->user_id,
-            "branch_id" => $request->branch_id
-        ]);
+        // Use a transaction to ensure both user and employee are created or neither
+        DB::beginTransaction();
+        
+        try {
+            // First create the user
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'employee', // Set default role
+            ]);
 
-        return redirect()->route("employees/index");
+            // Then create the employee record
+            Employee::create([
+                'user_id' => $user->id,
+                'branch_id' => $request->branch_id,
+            ]);
+
+            DB::commit();
+            
+            return redirect()->route('employees.index')
+                ->with('success', 'Employee created successfully');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create employee: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -51,13 +96,23 @@ class EmployeesController extends Controller
      */
     public function show(string $id)
     {
-        $employee = Employee::find($id);
+        $employee = Employee::with(['user', 'branch'])->find($id);
 
         if(!$employee){
-            return Inertia::render('employees/errors', ["message" => "Employee Record Does Not Exist"]);
+            return redirect()->route('employees.index')
+                ->with('error', 'Employee Record Does Not Exist');
         }
 
-        return Inertia::render("employees/index", ["employee" => $employee]);
+        return Inertia::render('employees/show', [
+            'employee' => [
+                'id' => $employee->id,
+                'employee_name' => $employee->user->name,
+                'employee_location' => $employee->branch->branch_name,
+                'email' => $employee->user->email,
+                'user_id' => $employee->user_id,
+                'branch_id' => $employee->branch_id,
+            ]
+        ]);
     }
 
     /**
@@ -65,17 +120,28 @@ class EmployeesController extends Controller
      */
     public function edit(string $id)
     {
-        $employee = Employee::find($id);
+        $employee = Employee::with(['user', 'branch'])->find($id);
 
         if(!$employee){
-            return Inertia::render('employees/errors', ["message" => "Employee Record Does Not Exist"]);
+            return redirect()->route('employees.index')
+                ->with('error', 'Employee Record Does Not Exist');
         }
 
         if (Gate::denies('employees.edit', $employee)) {
-            return Inertia::render('branches/index')->with('error', 'You Are Not Authorized To Perform This Action');
+            return redirect()->route('employees.index')
+                ->with('error', 'You Are Not Authorized To Perform This Action');
         }
 
-        return Inertia::render("employees/index", ["employee" => $employee]);
+        return Inertia::render('employees/edit', [
+            'employee' => [
+                'id' => $employee->id,
+                'name' => $employee->user->name,
+                'email' => $employee->user->email,
+                'branch_id' => $employee->branch_id,
+                'user_id' => $employee->user_id,
+            ],
+            'branches' => Branch::all()
+        ]);
     }
 
     /**
@@ -84,21 +150,27 @@ class EmployeesController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            "user_id" => 'required|numeric',
-            "branch_id" => 'required|numeric'
+            'name' => 'required|string|max:255',
+            'branch_id' => 'required|exists:branches,id',
         ]);
 
-        $employee = Employee::find($id);
+        $employee = Employee::with('user')->find($id);
 
         if(!$employee){
-            return Inertia::render("employees/errors", ["message" => "Employee Record Does Not Exist"]);
+            return redirect()->route('employees.index')
+                ->with('error', 'Employee Record Does Not Exist');
         }
 
-        $employee->user_id = $request->user_id;
+        // Update user name
+        $employee->user->name = $request->name;
+        $employee->user->save();
+        
+        // Update employee branch
         $employee->branch_id = $request->branch_id;
         $employee->save();
 
-        return redirect()->route("emplyees/index")->with('success', 'Emplyoyee Record Updated Successfully');
+        return redirect()->route('employees.index')
+            ->with('success', 'Employee Record Updated Successfully');
     }
 
     /**
@@ -109,15 +181,18 @@ class EmployeesController extends Controller
         $employee = Employee::find($id);
         
         if(!$employee){
-            return Inertia::render("employees/errors", ["message" => "Employee Record Does Not Exist"]);
+            return redirect()->route('employees.index')
+                ->with('error', 'Employee Record Does Not Exist');
         }
 
-        if (Gate::denies('employees.edit', $employee)) {
-            return Inertia::render('branches/index')->with('error', 'You Are Not Authorized To Perform This Action');
+        if (Gate::denies('employees.delete', $employee)) {
+            return redirect()->route('employees.index')
+                ->with('error', 'You Are Not Authorized To Perform This Action');
         }
 
         $employee->delete();
 
-        return redirect()->route("emplyees/index")->with('success', 'Emplyoyee Record Updated Successfully');
+        return redirect()->route('employees.index')
+            ->with('success', 'Employee Record Deleted Successfully');
     }
 }

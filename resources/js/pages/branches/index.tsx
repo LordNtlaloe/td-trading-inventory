@@ -28,47 +28,68 @@ type Branch = {
   branch_location: string;
 };
 
+type PageProps = {
+  branches: Branch[];
+  flash: {
+    success?: string;
+    error?: string;
+  };
+};
+
 export default function Branches() {
-  const { branches } = usePage<{ branches: Branch[] }>().props;
-  const { success, errors } = usePage<{ success?: string; errors?: string }>().props; // Fix: Renamed error to _error
+  const { branches, flash } = usePage<PageProps>().props;
   const { delete: destroy } = useForm();
   const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Delete branch using Inertia's useForm
-  const deleteBranch = async (id: number) => {
-    try {
+  const deleteBranch = (id: number) => {
+    if (confirm('Are you sure you want to delete this branch?')) {
       destroy(route('branches.destroy', id), {
-        onFinish: () => {
-          setAlert({ message: 'Branch deleted successfully!', type: 'success' });
+        onSuccess: () => {
+          // Success handling is done via the flash messages
         },
-        onError: () => {
+        onError: (errors) => {
           setAlert({ message: 'Failed to delete branch.', type: 'error' });
         }
       });
-    } catch (error) {
-      setAlert({ message: 'An error occurred' +  error, type: 'error' });
     }
   };
 
   useEffect(() => {
-    if (success) {
-      setAlert({ message: success, type: "success" });
+    // Process flash messages from Laravel
+    if (flash?.success) {
+      setAlert({ message: flash.success, type: "success" });
+      
+      // Auto-dismiss the alert after 5 seconds
+      const timer = setTimeout(() => {
+        setAlert(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
-    if (errors) { // Fix: Using renamed variable _error
-      setAlert({ message: errors, type: "error" });
+    
+    if (flash?.error) {
+      setAlert({ message: flash.error, type: "error" });
+      
+      // Auto-dismiss the alert after 5 seconds
+      const timer = setTimeout(() => {
+        setAlert(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [success, errors]);
+  }, [flash]);
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Branches" />
 
       <BranchesLayout>
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="flex justify-between">
             <Input className="w-1/4" placeholder="Search" />
             <Link href={route('branches.create')} className="cursor-pointer">
-              <Button className="cursor-pointer" variant="secondary">Add New Branch</Button>
+              <Button variant="secondary">Add New Branch</Button>
             </Link>
           </div>
 
@@ -83,25 +104,31 @@ export default function Branches() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {branches.map(({ id, branch_name, branch_location }) => (
-                <TableRow key={id}>
-                  <TableCell className="font-medium">{id}</TableCell>
-                  <TableCell>{branch_name}</TableCell>
-                  <TableCell>{branch_location}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="outline">
-                        <Link href={route('branches.edit', id)} className="cursor-pointer flex gap-2 justify-end">
-                          <PenIcon className="h-4 w-4 mr-1" /> Edit
-                        </Link>
-                      </Button>
-                      <Button variant="destructive" onClick={() => deleteBranch(id)}>
-                        <Trash2Icon className="h-4 w-4 mr-1" /> Delete
-                      </Button>
-                    </div>
-                  </TableCell>
+              {branches.length > 0 ? (
+                branches.map(({ id, branch_name, branch_location }) => (
+                  <TableRow key={id}>
+                    <TableCell className="font-medium">{id}</TableCell>
+                    <TableCell>{branch_name}</TableCell>
+                    <TableCell>{branch_location}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline">
+                          <Link href={route('branches.edit', id)} className="flex gap-2 items-center">
+                            <PenIcon className="h-4 w-4" /> Edit
+                          </Link>
+                        </Button>
+                        <Button variant="destructive" onClick={() => deleteBranch(id)}>
+                          <Trash2Icon className="h-4 w-4 mr-1" /> Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-4">No branches found</TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
             <TableFooter>
               <TableRow>
@@ -114,13 +141,19 @@ export default function Branches() {
 
         {/* Alert Component */}
         {alert && (
-          <Alert className={`z-50 h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
-            <InfoIcon className="h-4 w-4" />
-            <AlertTitle className='pb-2'>{alert.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
-            <AlertDescription className='text-white pb-4'>
-              {alert.message}
-            </AlertDescription>
-          </Alert>
+          <div className="fixed bottom-4 right-4 z-50 animate-in fade-in">
+            <Alert className={`w-96 shadow-lg ${
+              alert.type === 'success' ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'
+            }`}>
+              <InfoIcon className={`h-4 w-4 ${alert.type === 'success' ? 'text-green-600' : 'text-red-600'}`} />
+              <AlertTitle className={`${alert.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                {alert.type === 'success' ? 'Success' : 'Error'}
+              </AlertTitle>
+              <AlertDescription className={`${alert.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+                {alert.message}
+              </AlertDescription>
+            </Alert>
+          </div>
         )}
       </BranchesLayout>
     </AppLayout>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Branch extends Model
 {
@@ -11,12 +12,15 @@ class Branch extends Model
 
     protected $fillable = [
         'branch_name',
-        'branch_location'
+        'branch_location',
+        // Add other fillable fields as needed
     ];
 
-    public function employees()
+    /**
+     * Get the employees for the branch.
+     */
+    public function employees(): HasMany
     {
         return $this->hasMany(Employee::class);
     }
-
 }

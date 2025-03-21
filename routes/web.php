@@ -6,6 +6,7 @@ use App\Http\Controllers\Products\ProductsController;
 use App\Http\Controllers\UsersController;
 use App\Models\Products;
 use App\Models\Branch;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -21,24 +22,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('pos', function (Request $request) {
-        $branchId = $request->query('branch_id');
-
-        $productsQuery = Products::with('branch'); // Eager load branch details
-
-        if ($branchId && $branchId !== 'all') {
-            $productsQuery->where('branch_id', $branchId);
-        }
-
-        return Inertia::render('pos', [
-            'all_products' => Products::with('branch')->get(), // Include branch details
-            'filtered_products' => $productsQuery->get(), // Filtered by branch
-            'branches' => Branch::select('id', 'branch_name')->get(),
-        ]);
+    Route::get('pos', function () {
         
+        $user = auth()->user();
+        
+        // Get the employee record and their branch if the user is not a manager
+        $employee = null;
+        if ($user->role !== 'Manager' || $user->role !== 'Cashier') {
+            $employee = Employee::where('user_id', $user->id)
+                ->with('branch')
+                ->first();
+        }
+        
+        // Get all products for reference (managers can see all)
+        $allProducts = Products::with('branch')->get();
+        
+        // Get products filtered by branch
+        $filteredProducts = $allProducts;
+        
+        // If user is not a manager, filter by their branch
+        if ($user->role !== 'manager' && $employee) {
+            $filteredProducts = $allProducts->filter(function ($product) use ($employee) {
+                return $product->branch_id === $employee->branch_id;
+            })->values();
+        }
+        
+        return Inertia::render('pos', [
+            'all_products' => $allProducts,
+            'filtered_products' => $filteredProducts,
+            'branches' => Branch::select('id', 'branch_name')->get(),
+            'employee' => $employee,
+        ]);
     })->name('pos');
 });
-
 Route::resource('branches', BranchesController::class)->middleware(['auth', 'verified']); 
 Route::resource('products', ProductsController::class)->middleware(['auth', 'verified']);
 Route::resource('users', UsersController::class)->middleware(['auth', 'verified']);

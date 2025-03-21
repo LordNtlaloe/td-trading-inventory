@@ -28,8 +28,16 @@ type Employee = {
     employee_location: string;
 };
 
+type PageProps = {
+    employees: Employee[];
+    flash: {
+      success?: string;
+      error?: string;
+    };
+  };
+
 export default function Employees() {
-    const { employees } = usePage<{ employees: Employee[] }>().props;
+    const { employees, flash } = usePage<PageProps>().props;
     const { success, errors } = usePage<{ success?: string; errors?: string }>().props; // Fix: Renamed error to _error
     const { delete: destroy } = useForm();
     const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -51,14 +59,30 @@ export default function Employees() {
     };
 
     useEffect(() => {
-        if (success) {
-            setAlert({ message: success, type: "success" });
+        // Process flash messages from Laravel
+        if (flash?.success) {
+          setAlert({ message: flash.success, type: "success" });
+          
+          // Auto-dismiss the alert after 5 seconds
+          const timer = setTimeout(() => {
+            setAlert(null);
+          }, 5000);
+          
+          return () => clearTimeout(timer);
         }
-        if (errors && typeof errors === 'object') {
-            const errorMessage = Object.values(errors).flat().join(', '); // Convert object errors to string
-            setAlert({ message: errorMessage, type: "error" });
+        
+        if (flash?.error) {
+          setAlert({ message: flash.error, type: "error" });
+          
+          // Auto-dismiss the alert after 5 seconds
+          const timer = setTimeout(() => {
+            setAlert(null);
+          }, 5000);
+          
+          return () => clearTimeout(timer);
         }
-    }, [success, errors]);
+      }, [flash]);
+    
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -125,13 +149,18 @@ export default function Employees() {
 
                 {/* Alert Component */}
                 {alert && (
-                    <Alert className={`z-50 h-15 w-96 fixed bottom-4 right-4 p-4 rounded-md shadow-lg ${alert.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
-                        <InfoIcon className="h-4 w-4" />
-                        <AlertTitle className='pb-2'>{alert.type === 'success' ? 'Success' : 'Error'}</AlertTitle>
-                        <AlertDescription className='text-white pb-4'>
-                            {alert.message}
-                        </AlertDescription>
-                    </Alert>
+                    <div className="fixed bottom-4 right-4 z-50 animate-in fade-in">
+                        <Alert className={`w-96 shadow-lg ${alert.type === 'success' ? 'bg-green-500 border-green-500' : 'bg-red-500 border-red-500'
+                            }`}>
+                            <InfoIcon className={`h-4 w-4 ${alert.type === 'success' ? 'text-green-600' : 'text-red-600'}`} />
+                            <AlertTitle className={`${alert.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                                {alert.type === 'success' ? 'Success' : 'Error'}
+                            </AlertTitle>
+                            <AlertDescription className={`${alert.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+                                {alert.message}
+                            </AlertDescription>
+                        </Alert>
+                    </div>
                 )}
             </EmployeesLayout>
         </AppLayout>
