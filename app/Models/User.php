@@ -60,4 +60,9 @@ class User extends Authenticatable
     public function isManager(): bool{
         return $this->role === "Manager";
     }
+
+    public function employee()
+    {
+        return $this->hasOne(Employee::class);
+    }
 }

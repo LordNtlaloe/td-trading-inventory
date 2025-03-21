@@ -2,7 +2,7 @@ import Heading from '@/components/heading';
 import { type PropsWithChildren } from 'react';
 
 
-export default function BranchesLayout({ children }: PropsWithChildren) {
+export default function UsersLayout({ children }: PropsWithChildren) {
 
     if (typeof window === 'undefined') {
         return null;
@@ -11,7 +11,7 @@ export default function BranchesLayout({ children }: PropsWithChildren) {
 
     return (
         <div className="px-4 py-6">
-            <Heading title="Branches" description="Manage Your Branches" />
+            <Heading title="Users" description="Manage Users On The Platform" />
 
             <div className="flex flex-col space-y-8 lg:flex-row lg:space-y-0 lg:space-x-12">
                 <div className="flex-1 md:max-w-7xl">

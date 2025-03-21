@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Branches\BranchesController;
+use App\Http\Controllers\Employees\EmployeesController;
 use App\Http\Controllers\Products\ProductsController;
+use App\Http\Controllers\UsersController;
 use App\Models\Products;
 use App\Models\Branch;
 use Illuminate\Http\Request;
@@ -39,6 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::resource('branches', BranchesController::class)->middleware(['auth', 'verified']); 
 Route::resource('products', ProductsController::class)->middleware(['auth', 'verified']);
-
+Route::resource('users', UsersController::class)->middleware(['auth', 'verified']);
+Route::resource('employees', EmployeesController::class)->middleware(['auth', 'verified']);
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

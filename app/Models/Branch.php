@@ -13,4 +13,10 @@ class Branch extends Model
         'branch_name',
         'branch_location'
     ];
+
+    public function employees()
+    {
+        return $this->hasMany(Employee::class);
+    }
+
 }
