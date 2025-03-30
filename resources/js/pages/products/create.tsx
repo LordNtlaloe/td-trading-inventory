@@ -4,12 +4,12 @@ import AppLayout from '@/layouts/app-layout';
 import ProductsLayout from '@/layouts/products/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import InputError from '@/components/input-error';
+import InputError from '@/components/general/input-error';
 import { Label } from '@/components/ui/label';
 import { InfoIcon, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Heading from '@/components/heading';
+import Heading from '@/components/general/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Breadcrumb navigation

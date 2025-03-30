@@ -1,4 +1,4 @@
-import Heading from '@/components/heading';
+import Heading from '@/components/general/heading';
 import { type PropsWithChildren } from 'react';
 
 

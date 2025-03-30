@@ -4,12 +4,12 @@ import AppLayout from '@/layouts/app-layout';
 import BranchesLayout from '@/layouts/branches/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import InputError from '@/components/input-error';
+import InputError from '@/components/general/input-error';
 import { Label } from '@/components/ui/label'; // Update Label import
 import { InfoIcon, LoaderCircle } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Heading from '@/components/heading';
+import Heading from '@/components/general/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 const breadcrumbs: BreadcrumbItem[] = [
   {
