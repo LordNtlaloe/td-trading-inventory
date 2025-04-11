@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Models\Branch;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -43,54 +44,71 @@ class EmployeesController extends Controller
     public function create()
     {
         return Inertia::render('employees/create', [
-            'branches' => Branch::all()
+            'branches' => Branch::all(),
+            'users' => User::whereDoesntHave('employee')->get()
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'creation_method' => 'required|in:new,existing',
             'branch_id' => 'required|exists:branches,id',
+            'user_id' => [
+                'required_if:creation_method,existing',
+                'exists:users,id',
+                Rule::unique('employees', 'user_id') // Ensure user isn't already an employee
+            ],
+            'name' => 'required_if:creation_method,new|string|max:255',
+            'email' => [
+                'required_if:creation_method,new',
+                'email',
+                Rule::unique('users', 'email')
+            ],
+            'password' => 'required_if:creation_method,new|confirmed|min:8',
         ]);
 
-        // Use a transaction to ensure both user and employee are created or neither
         DB::beginTransaction();
-        
+
         try {
-            // First create the user
+            if ($request->creation_method === 'existing') {
+                // Check if user is already an employee
+                if (Employee::where('user_id', $request->user_id)->exists()) {
+                    throw new \Exception('This user is already an employee');
+                }
+
+                Employee::create([
+                    'user_id' => $request->user_id,
+                    'branch_id' => $request->branch_id,
+                ]);
+
+                DB::commit();
+                return redirect()->route('employees.index')
+                    ->with('success', 'Employee assigned successfully');
+            }
+
+            // For new user creation
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'role' => 'employee', // Set default role
             ]);
 
-            // Then create the employee record
             Employee::create([
                 'user_id' => $user->id,
                 'branch_id' => $request->branch_id,
             ]);
 
             DB::commit();
-            
             return redirect()->route('employees.index')
                 ->with('success', 'Employee created successfully');
-                
         } catch (\Exception $e) {
             DB::rollBack();
-            
             return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to create employee: ' . $e->getMessage());
+                ->withErrors(['server_error' => $e->getMessage()])
+                ->withInput();
         }
     }
-
     /**
      * Display the specified resource.
      */
@@ -98,7 +116,7 @@ class EmployeesController extends Controller
     {
         $employee = Employee::with(['user', 'branch'])->find($id);
 
-        if(!$employee){
+        if (!$employee) {
             return redirect()->route('employees.index')
                 ->with('error', 'Employee Record Does Not Exist');
         }
@@ -122,7 +140,7 @@ class EmployeesController extends Controller
     {
         $employee = Employee::with(['user', 'branch'])->find($id);
 
-        if(!$employee){
+        if (!$employee) {
             return redirect()->route('employees.index')
                 ->with('error', 'Employee Record Does Not Exist');
         }
@@ -156,7 +174,7 @@ class EmployeesController extends Controller
 
         $employee = Employee::with('user')->find($id);
 
-        if(!$employee){
+        if (!$employee) {
             return redirect()->route('employees.index')
                 ->with('error', 'Employee Record Does Not Exist');
         }
@@ -164,7 +182,7 @@ class EmployeesController extends Controller
         // Update user name
         $employee->user->name = $request->name;
         $employee->user->save();
-        
+
         // Update employee branch
         $employee->branch_id = $request->branch_id;
         $employee->save();
@@ -179,8 +197,8 @@ class EmployeesController extends Controller
     public function destroy(string $id)
     {
         $employee = Employee::find($id);
-        
-        if(!$employee){
+
+        if (!$employee) {
             return redirect()->route('employees.index')
                 ->with('error', 'Employee Record Does Not Exist');
         }

@@ -8,7 +8,7 @@ import { saveReceiptPdf } from '@/components/products/ReceiptDialog';
 interface PaymentDialogProps {
     open: boolean;
     onClose: () => void;
-    onSuccess?: () => void; // Add this line
+    onSuccess?: () => void;
     branchId: number;
     cashierId: number;
     branchName: string;
@@ -43,12 +43,18 @@ interface Order {
     total_amount: number;
     order_date: string;
     items: OrderItem[];
+    branch: {
+        name: string;
+    };
+    cashier: {
+        name: string;
+    };
 }
 
 export default function PaymentDialog({
     open,
     onClose,
-    onSuccess, // Add this to destructured props
+    onSuccess,
     branchId,
     cashierId,
     branchName,
@@ -56,67 +62,46 @@ export default function PaymentDialog({
 }: PaymentDialogProps) {
     const { cart, calculateTotals, clearCart } = usePos();
     const { subtotal, totalDiscount, total } = calculateTotals();
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const { post } = useForm<{
-        items: Array<{
-            product_id: number;
-            quantity: number;
-            price: number;
-            discount: number;
-        }>;
-        total: number;
-        branch_id: number;
-        cashier_id: number;
-        order_type: string;
-    }>();
+    const { post, processing, errors } = useForm({
+        items: cart.map((item: CartItem) => ({
+            product_id: item.product.id,
+            quantity: item.quantity,
+            price: item.product.product_price,
+            discount: item.discount || 0,
+        })),
+        total: total,
+        branch_id: branchId,
+        cashier_id: cashierId,
+    });
 
-    const handleConfirmAndPrint = async () => {
-        setIsLoading(true);
+    const handleConfirmAndPrint = () => {
         setError('');
 
-        try {
-            const orderData = {
-                items: cart.map((item: CartItem) => ({
-                    product_id: item.product.id,
-                    quantity: item.quantity,
-                    price: item.product.product_price,
-                    discount: item.discount || 0,
-                })),
-                total: total,
-                branch_id: branchId,
-                cashier_id: cashierId,
-            };
-
-            console.log(orderData);
-            await post(route('orders.process-payment'), {
-                ...orderData,
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: (page) => {
+        post(route('orders.process-payment'), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                if (page.props.order) {
                     const order = page.props.order as Order;
                     saveReceiptPdf({
                         order,
-                        branchName,
-                        cashierName
+                        branchName: order.branch.name,
+                        cashierName: order.cashier.name
                     });
                     clearCart();
                     onClose();
                     onSuccess?.();
-
-                },
-                onError: (errors) => {
-                    setError('Failed to process order. Please try again.');
-                    console.error('Order processing errors:', errors);
-                },
-            });
-        } catch (error) {
-            console.error('Error:', error);
-            setError('An unexpected error occurred.');
-        } finally {
-            setIsLoading(false);
-        }
+                }
+            },
+            onError: (errors) => {
+                console.error('Order processing errors:', errors);
+                setError(
+                    errors.error || 
+                    'Failed to process order. Please check all fields and try again.'
+                );
+            }
+        });
     };
 
     return (
@@ -169,18 +154,36 @@ export default function PaymentDialog({
                     </div>
                 </div>
 
-                {error && <p className="text-red-500 mb-4">{error}</p>}
+                {/* Error Display */}
+                {error && (
+                    <div className="text-red-500 mb-4">
+                        {error}
+                    </div>
+                )}
+
+                {/* Form Errors */}
+                {Object.keys(errors).length > 0 && (
+                    <div className="text-red-500 mb-4">
+                        {Object.values(errors).map((error, index) => (
+                            <p key={index}>{error}</p>
+                        ))}
+                    </div>
+                )}
 
                 <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={onClose} disabled={isLoading}>
+                    <Button 
+                        variant="outline" 
+                        onClick={onClose} 
+                        disabled={processing}
+                    >
                         Cancel
                     </Button>
                     <Button
                         onClick={handleConfirmAndPrint}
-                        disabled={isLoading}
+                        disabled={processing}
                         className="flex items-center gap-2"
                     >
-                        {isLoading ? 'Processing...' : (
+                        {processing ? 'Processing...' : (
                             <>
                                 <MdPrint /> Confirm & Print
                             </>

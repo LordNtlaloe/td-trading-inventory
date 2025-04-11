@@ -1,7 +1,5 @@
 import { Chart } from '@/components/general/area-chart';
 import DashboardCard from '@/components/general/cards/dashboard-card';
-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import AppLayout from '@/layouts/app-layout';
 import { FaShoppingCart, FaUsers, FaBuilding, FaFileInvoice } from "react-icons/fa";
 import { type BreadcrumbItem } from '@/types';
