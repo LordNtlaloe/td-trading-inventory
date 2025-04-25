@@ -36,8 +36,10 @@ interface ReceiptProps {
 export const Receipt: React.FC<ReceiptProps> = ({ order, branchName, cashierName, onPrintComplete }) => {
     const receiptRef = React.useRef<HTMLDivElement>(null);
 
+    // Fix: Using correct type for useReactToPrint
     const handlePrint = useReactToPrint({
-        content: () => receiptRef.current as HTMLDivElement | null, // Explicit type assertion
+        // Fix: Changed 'content' to 'contentRef' which returns a reference
+        contentRef: () => receiptRef.current,
         onAfterPrint: onPrintComplete,
         pageStyle: `
             @page {

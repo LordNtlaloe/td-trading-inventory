@@ -47,6 +47,7 @@ export interface Employee {
   branch: {
     id: number;
     branch_name: string;
+    branch_location: string;
   };
   // Add other employee properties as needed
 }

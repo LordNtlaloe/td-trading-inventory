@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { BreadcrumbItem } from '@/types';
+import { useReactToPrint } from "react-to-print";
+import { useRef } from "react";
 import OrdersLayout from '@/layouts/orders/layout';
+
 
 interface OrderItem {
     id: number;
@@ -40,14 +43,17 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Order Details', href: '' },
 ];
 
+
 export default function OrderShow() {
     const { order } = usePage<{ order: Order }>().props;
+    const contentRef = useRef<HTMLDivElement>(null);
+    const reactToPrintFn = useReactToPrint({ contentRef });
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Order #${order.id}`} />
             <OrdersLayout>
-                <div className="container mx-auto py-6">
+                <div className="container mx-auto py-6" ref={contentRef}>
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
                             <h1 className="text-2xl font-bold">Order #{order.id}</h1>
@@ -58,8 +64,8 @@ export default function OrderShow() {
                         <div className="flex gap-2">
                             <Badge variant={
                                 order.status === 'completed' ? 'default' :
-                                order.status === 'pending' ? 'secondary' :
-                                'destructive'
+                                    order.status === 'pending' ? 'secondary' :
+                                        'destructive'
                             }>
                                 {order.status}
                             </Badge>
@@ -97,13 +103,13 @@ export default function OrderShow() {
                         <div className="p-6 border-b">
                             <h2 className="font-semibold text-xl">Order Items</h2>
                         </div>
-                        
+
                         <div className="divide-y">
                             {order.items.map((item) => (
                                 <div key={item.id} className="p-6 flex flex-col md:flex-row gap-6">
                                     <div className="w-full md:w-32 h-32  rounded-lg overflow-hidden">
                                         {item.product.product_image ? (
-                                            <img 
+                                            <img
                                                 src={item.product.product_image}
                                                 alt={item.product.product_name}
                                                 className="w-full h-full object-cover"
@@ -114,7 +120,7 @@ export default function OrderShow() {
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <div className="flex-1">
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                             <div>
@@ -132,7 +138,7 @@ export default function OrderShow() {
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="mt-4 pt-4 border-t flex flex-col md:flex-row md:items-center justify-between gap-4">
                                             {item.discount > 0 && (
                                                 <div className="text-right">
@@ -149,7 +155,7 @@ export default function OrderShow() {
                                 </div>
                             ))}
                         </div>
-                        
+
                         <div className="p-6 border-t">
                             <div className="flex justify-end">
                                 <div className="w-full md:w-1/3 space-y-2">
@@ -180,7 +186,7 @@ export default function OrderShow() {
                         <Link href={route('orders')}>
                             <Button variant="outline">Back to Orders</Button>
                         </Link>
-                        <Button>
+                        <Button onClick={() => reactToPrintFn()}>
                             Print Receipt
                         </Button>
                     </div>

@@ -1,4 +1,3 @@
-// src/contexts/CartContext.tsx
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { CartItem, Product } from '@/lib/types';
 import { toast } from 'sonner';

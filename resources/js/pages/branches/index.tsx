@@ -48,8 +48,8 @@ export default function Branches() {
         onSuccess: () => {
           // Success handling is done via the flash messages
         },
-        onError: (errors) => {
-          setAlert({ message: 'Failed to delete branch.', type: 'error' });
+        onError: (error) => {
+          setAlert({ message: `${error}, 'Failed to delete branch.'`, type: 'error' });
         }
       });
     }

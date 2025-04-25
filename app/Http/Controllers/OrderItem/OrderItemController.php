@@ -30,7 +30,6 @@ class OrderItemController extends Controller
 
         return Inertia::render('OrderItems/Show', [
             'orderItem' => $orderItem,
-            'canRefund' => auth()->user()->can('refund', $orderItem), // Added authorization
         ]);
     }
 }

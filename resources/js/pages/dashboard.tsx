@@ -43,7 +43,7 @@ export default function Dashboard() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="grid auto-rows-min gap-4 md:grid-cols-4">
+                <div className="auto-rows-min gap-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-3/2 object-fill overflow-hidden rounded-xl border">
                         <div className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20">
                             <DashboardCard title='Products' icon={<FaShoppingCart />}

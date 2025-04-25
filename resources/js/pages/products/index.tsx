@@ -19,7 +19,7 @@ import {
     useReactTable,
 } from "@tanstack/react-table"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, PenIcon, Trash2Icon } from "lucide-react"
+import { ChevronDown, MoreHorizontal, PenIcon, Trash2Icon } from "lucide-react"
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,

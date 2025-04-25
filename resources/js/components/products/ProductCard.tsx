@@ -9,7 +9,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onAddToCart }: ProductCardProps) {
     return (
-        <Card className="border bg-[#1D1D1D] 
+        <Card className="bg-[#1D1D1D] 
       w-[200px] sm:w-[250px] md:w-[250px] lg:w-full 
       max-[1024px]:w-[180px]">
 

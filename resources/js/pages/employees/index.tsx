@@ -38,7 +38,6 @@ type PageProps = {
 
 export default function Employees() {
     const { employees, flash } = usePage<PageProps>().props;
-    const { success, errors } = usePage<{ success?: string; errors?: string }>().props; // Fix: Renamed error to _error
     const { delete: destroy } = useForm();
     const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 

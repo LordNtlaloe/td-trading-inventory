@@ -62,58 +62,61 @@ class OrderController extends Controller
                 ];
             }),
         ],
-        'canEdit' => auth()->user()->can('update', $order),
     ]);
 }
 
-    public function processPayment(Request $request)
-    {
-        $validated = $request->validate([
-            'branch_id' => 'required|integer|exists:branches,id',
-            'cashier_id' => 'required|integer|exists:users,id',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
-            'items.*.discount' => 'required|numeric|min:0',
-            'total' => 'required|numeric|min:0',
+public function processPayment(Request $request)
+{
+    $validated = $request->validate([
+        'branch_id' => 'required|integer|exists:branches,id',
+        'cashier_id' => 'required|integer|exists:users,id',
+        'items' => 'required|array|min:1',
+        'items.*.product_id' => 'required|integer|exists:products,id',
+        'items.*.quantity' => 'required|integer|min:1',
+        'items.*.price' => 'required|numeric|min:0',
+        'items.*.discount' => 'required|numeric|min:0',
+        'total' => 'required|numeric|min:0',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+        $order = Order::create([
+            'total_amount' => $validated['total'],
+            'branch_id' => $validated['branch_id'],
+            'user_id' => $validated['cashier_id'],
+            'status' => 'completed',
+            'order_date' => now(),
         ]);
 
-        DB::beginTransaction();
-
-        try {
-            $order = Order::create([
-                'total_amount' => $validated['total'],
-                'branch_id' => $validated['branch_id'],
-                'user_id' => $validated['cashier_id'],
-                'status' => 'completed',
-                'order_date' => now(),
+        foreach ($validated['items'] as $item) {
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+                'price' => $item['price'],
+                'discount' => $item['discount'],
+                'subtotal' => ($item['price'] * $item['quantity']) - $item['discount'],
             ]);
 
-            foreach ($validated['items'] as $item) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'discount' => $item['discount'],
-                    'subtotal' => ($item['price'] * $item['quantity']) - $item['discount'],
-                ]);
-            }
-
-            DB::commit();
-
-            return redirect()->back()->with([
-                'order' => $order->load(['items.product', 'branch', 'cashier']),
-                'success' => 'Order processed successfully!'
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors([
-                'error' => 'Failed to process order: ' . $e->getMessage()
-            ]);
+            // Update product quantity
+            Products::where('id', $item['product_id'])
+                ->decrement('product_quantity', $item['quantity']);
         }
+
+        DB::commit();
+
+        return redirect()->back()->with([
+            'order' => $order->load(['items.product', 'branch', 'cashier']),
+            'success' => 'Order processed successfully!'
+        ]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->withErrors([
+            'error' => 'Failed to process order: ' . $e->getMessage()
+        ]);
     }
+}
 
     protected function generateReceiptData(Order $order): array
     {
