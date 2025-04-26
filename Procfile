@@ -1,1 +1,1 @@
-web: heroku-php-apache2 -C apache.conf
+web: heroku-php-apache2
