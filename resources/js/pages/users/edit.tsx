@@ -33,6 +33,7 @@ type UpdateUserRoleForm = {
 const userRoles = [
     'Manager',
     'Cashier',
+    'Admin'
 ];
 
 export default function Users() {

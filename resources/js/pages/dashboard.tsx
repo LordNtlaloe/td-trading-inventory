@@ -4,7 +4,9 @@ import AppLayout from '@/layouts/app-layout';
 import { FaShoppingCart, FaUsers, FaBuilding, FaFileInvoice } from "react-icons/fa";
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
+import { DashboardPageProps } from '@/lib/types';
+import { useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -13,73 +15,108 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-type Item = {
-    id: number
-}
-
-
-type PageProps = {
-    products: Item[];
-    employees: Item[];
-    branches: Item[];
-    orders: Item[];
-}
-
 export default function Dashboard() {
-    const [totalProducts, setTotalProducts] = useState(0);
-    const [totalEmployees, setTotalEmployees] = useState(0);
-    const [totalBranches, setTotalBranches] = useState(0);
-    const [totalOrders, setTotalOrders] = useState(0);
-    const { products, employees, branches, orders } = usePage<PageProps>().props;
+    const {
+        products,
+        employees,
+        branches,
+        orders,
+        chartData = [],
+        period,
+        previousPeriodProducts,
+        previousPeriodEmployees,
+        previousPeriodBranches,
+        previousPeriodOrders,
+        branchName = 'All Branches',
+        auth,
+        employee
+    } = usePage<DashboardPageProps>().props;
 
+    const transformedChartData = chartData.map(item => ({
+        ...item,
+        total_orders: item.total // map 'total' to 'total_orders'
+    }));
+
+    const isEmployee = auth.user.role === 'employee';
+    const dataScope: string = isEmployee ? branchName : 'All Branches';
+
+    // Debugging - log chart data
     useEffect(() => {
-        setTotalProducts(products.length);
-        setTotalEmployees(employees.length);
-        setTotalBranches(branches.length);
-        setTotalOrders(orders.length)
-    }, [products, employees, branches, orders])
+        console.log('Chart Data:', chartData);
+    }, [chartData]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="auto-rows-min gap-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                    <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-3/2 object-fill overflow-hidden rounded-xl border">
-                        <div className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20">
-                            <DashboardCard title='Products' icon={<FaShoppingCart />}
-                                content={totalProducts} metrics='-5%' bgClass="bg-gradient-to-tr from-blue-600 to-blue-400 shadow-blue-500/40"
-                            />
-                        </div>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl font-bold">Dashboard Overview</h1>
+                        <p className="text-sm text-gray-400">
+                            Showing data for: <span className="font-medium">{dataScope}</span>
+                            {isEmployee && employee?.branch_name && (
+                                <span className="ml-2">({employee.branch_name})</span>
+                            )}
+                        </p>
                     </div>
-                    <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-3/2 object-fill overflow-hidden rounded-xl border">
-                        <div className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20">
-                            <DashboardCard title='Employees' icon={<FaUsers />}
-                                content={totalEmployees} metrics='-5%' bgClass='bg-gradient-to-tr from-green-600 to-green-400 text-white shadow-green-500/40'
-                            />
-                        </div>
-                    </div>
-                    <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-3/2 object-fill overflow-hidden rounded-xl border">
-                        <div className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20">
-                            <DashboardCard title='Branches' icon={<FaBuilding />}
-                                content={totalBranches} metrics='-5%' bgClass="bg-gradient-to-tr from-purple-600 to-purple-400 shadow-purple-500/40"
-                            />
-                        </div>
-                    </div>
-                    <div className="border-sidebar-border/70 dark:border-sidebar-border relative aspect-3/2 object-fill overflow-hidden rounded-xl border">
-                        <div className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20">
-                            <DashboardCard title='Orders' icon={<FaFileInvoice />}
-                                content={totalOrders} metrics='-5%' bgClass="bg-gradient-to-tr from-red-600 to-red-400 shadow-red-500/40"
-                            />
-                        </div>
-                    </div>
-                </div>
-                <div className="border-sidebar-border/70 dark:border-sidebar-border relative min-h-screen flex-1 overflow-y-auto rounded-xl border md:min-h-min scrollbar-hide">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 absolute inset-0 size-full p-4 mb-4">
-                        <Chart />
-                        <Chart />
-                    </div>
+                    <PeriodSelector currentPeriod={period} />
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <DashboardCard
+                        title="Products"
+                        icon={<FaShoppingCart />}
+                        content={products}
+                        previousPeriodValue={previousPeriodProducts}
+                        bgClass="bg-gradient-to-tr from-blue-600 to-blue-400 shadow-blue-500/40"
+                        dataScope={dataScope}
+                    />
+                    <DashboardCard
+                        title="Employees"
+                        icon={<FaUsers />}
+                        content={employees}
+                        previousPeriodValue={previousPeriodEmployees}
+                        bgClass="bg-gradient-to-tr from-green-600 to-green-400 text-white shadow-green-500/40"
+                        dataScope={dataScope}
+                    />
+                    {!isEmployee && (
+                        <DashboardCard
+                            title="Branches"
+                            icon={<FaBuilding />}
+                            content={branches}
+                            previousPeriodValue={previousPeriodBranches}
+                            bgClass="bg-gradient-to-tr from-purple-600 to-purple-400 shadow-purple-500/40"
+                            dataScope={dataScope}
+                        />
+                    )}
+                    <DashboardCard
+                        title="Orders"
+                        icon={<FaFileInvoice />}
+                        content={orders}
+                        previousPeriodValue={previousPeriodOrders}
+                        bgClass="bg-gradient-to-tr from-red-600 to-red-400 shadow-red-500/40"
+                        dataScope={dataScope}
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <Chart
+                        data={transformedChartData }
+                        title="Order Trends"
+                        description="Total orders over time"
+                        showPaymentMethods={false}
+                        branchName={branchName}
+                        isEmployee={isEmployee}
+                    />
+                    <Chart
+                        data={transformedChartData }
+                        title="Payment Methods"
+                        description="Breakdown by payment type"
+                        showPaymentMethods
+                        branchName={branchName}
+                        isEmployee={isEmployee}
+                    />
+                </div>
             </div>
         </AppLayout>
     );

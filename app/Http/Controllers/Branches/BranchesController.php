@@ -15,6 +15,9 @@ class BranchesController extends Controller
      */
     public function index()
     {
+        if (Gate::denies('branches.manage')) { // Changed from 'branche.create' to 'branch.create' for consistency
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
         return Inertia::render('branches/index', [
             "branches" => Branch::all()
         ]);

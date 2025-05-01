@@ -3,9 +3,6 @@ import { usePos } from '@/contexts/CartContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import CartItem from '@/components/products/CartItem';
-import PaymentDialog from './PaymentDialog';
-import { usePage } from '@inertiajs/react';
-import { PageProps } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
@@ -14,8 +11,6 @@ export default function ShoppingCart() {
     const {
         cart,
         openPaymentDialog,
-        closePaymentDialog,
-        isPaymentDialogVisible,
         increaseQuantity,
         decreaseQuantity,
         removeFromCart,
@@ -25,14 +20,6 @@ export default function ShoppingCart() {
     } = usePos();
 
     const { subtotal, totalDiscount, total } = calculateTotals();
-
-    const { props } = usePage<PageProps>();
-    const { auth, employee } = props;
-
-    const branchId = employee?.branch?.id ?? 0;
-    const branchName = auth.user.role === 'manager' ? 'All Branches' : employee?.branch?.branch_name || 'Branch';
-    const cashierId = auth.user.id;
-    const cashierName = auth.user.name;
 
     const [discountAmount, setDiscountAmount] = useState('');
 
@@ -133,18 +120,6 @@ export default function ShoppingCart() {
             >
                 Process Payment
             </Button>
-
-            {isPaymentDialogVisible && (
-                <PaymentDialog
-                    open={isPaymentDialogVisible}
-                    onSuccess={() => console.log("Payment Successful")}
-                    onClose={closePaymentDialog}
-                    branchId={branchId}
-                    cashierId={cashierId}
-                    branchName={branchName}
-                    cashierName={cashierName}
-                />
-            )}
         </div>
     );
 }

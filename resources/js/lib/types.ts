@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PageProps as InertiaPageProps } from '@inertiajs/core';
-
 
 export type Product = {
   id: number;
@@ -15,6 +15,12 @@ export type Product = {
   };
   branch_id: number;
 };
+
+export type Branch = {
+  id: number;
+  branch_name: string;
+  branch_location: string;
+}
 
 export interface CartItem {
   discount: number;
@@ -40,33 +46,60 @@ export interface Receipt {
 export interface AuthUser {
   id: number;
   name: string;
-  role: string;
-  // Add other user properties as needed
+  role: 'admin' | 'manager' | 'cashier';
+  email?: string;
 }
 
 export interface Employee {
-  branch: {
+  id?: number;
+  branch?: {
     id: number;
     branch_name: string;
     branch_location: string;
   };
-  // Add other employee properties as needed
 }
 
 export interface PageProps extends InertiaPageProps {
+  filtered_products?: Product[];
   auth: {
     user: AuthUser;
   };
   employee?: Employee;
-  filtered_products?: Product[];
+  branches: Branch[];
+  requires_branch_selection?: boolean;
 }
 
-export function calculateCartTotals(cart: CartItem[]) {
-  const subtotal = cart.reduce(
-    (sum, item) => sum + item.product.product_price * item.quantity,
-    0
-  );
-  const totalDiscount = 0; // You can add discount logic here
-  const total = subtotal - totalDiscount;
-  return { subtotal, totalDiscount, total };
+
+export interface DashboardPageProps extends InertiaPageProps {
+    products: number;
+    employees: number;
+    branches: number;
+    orders: number;
+    chartData: Array<{
+        month: string;
+        cash: number;
+        card: number;
+        mobile_money: number;
+        bank_transfer: number;
+        total: number;
+    }>;
+    period: string;
+    previousPeriodProducts: number;
+    previousPeriodEmployees: number;
+    previousPeriodBranches: number;
+    previousPeriodOrders: number;
+    branchName: string;
+    auth: {
+        user: {
+            id: number;
+            name: string;
+            email: string;
+            role: string;
+        };
+    };
+    employee?: {
+        branch_id: number;
+        branch_name: string;
+    };
+    [key: string]: any;
 }

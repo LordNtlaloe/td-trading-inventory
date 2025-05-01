@@ -32,12 +32,19 @@ class EmployeesController extends Controller
                     'branch_id' => $employee->branch_id,
                 ];
             });
-
+    
         return Inertia::render('employees/index', [
-            'employees' => $employees
+            'employees' => $employees,
+            'auth' => [
+                'user' => auth()->user() ? [
+                    'id' => auth()->user()->id,
+                    'name' => auth()->user()->name,
+                    'email' => auth()->user()->email,
+                    'role' => auth()->user()->role,
+                ] : null,
+            ]
         ]);
     }
-
     /**
      * Show the form for creating a new resource.
      */

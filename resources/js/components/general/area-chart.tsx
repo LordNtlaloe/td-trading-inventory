@@ -1,8 +1,7 @@
 "use client"
 
-import { TrendingUp } from "lucide-react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-
+import { TrendingUp, TrendingDown } from "lucide-react"
+import { Area, Bar, ComposedChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import {
     Card,
     CardContent,
@@ -11,52 +10,72 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import {
-    ChartConfig,
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
-} from "@/components/ui/chart"
-const chartData = [
-    { month: "January", desktop: 186, mobile: 80 },
-    { month: "February", desktop: 305, mobile: 200 },
-    { month: "March", desktop: 237, mobile: 120 },
-    { month: "April", desktop: 73, mobile: 190 },
-    { month: "May", desktop: 209, mobile: 130 },
-    { month: "June", desktop: 214, mobile: 140 },
-]
 
-const chartConfig = {
-    desktop: {
-        label: "Desktop",
-        color: "hsl(var(--chart-1))",
-    },
-    mobile: {
-        label: "Mobile",
-        color: "hsl(var(--chart-2))",
-    },
-} satisfies ChartConfig
+interface ChartData {
+    month: string;
+    cash: number;
+    card: number;
+    mobile_money: number;
+    bank_transfer: number;
+    total_orders: number;
+    total?: number;
+}
 
-export function Chart() {
+interface ChartProps {
+    data: ChartData[];
+    title: string;
+    description: string;
+    showPaymentMethods?: boolean;
+    branchName: string;
+    isEmployee: boolean;
+}
+
+export function Chart({
+    data,
+    title,
+    description,
+    showPaymentMethods = true,
+    branchName = 'All Branches',
+    isEmployee = false
+}: ChartProps) {
+    if (data.length === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>{title}</CardTitle>
+                    <CardDescription>
+                        {description} {isEmployee && `for ${branchName}`}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px] flex items-center justify-center">
+                    <p className="text-muted-foreground">No data available for the selected period</p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // Calculate trend based on total_orders
+    const trend = data.length > 1
+        ? ((data[data.length - 1].total_orders - data[0].total_orders) / data[0].total_orders * 100)
+        : 0;
+
+    const totalOrders = data.reduce((sum, item) => sum + item.total_orders, 0);
+    const totalRevenue = data.reduce((sum, item) => sum + (item.total || 0), 0);
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Area Chart - Stacked</CardTitle>
-                <CardDescription>
-                    Showing total visitors for the last 6 months
-                </CardDescription>
+                <div>
+                    <CardTitle>{title}</CardTitle>
+                    <CardDescription>
+                        {description} {isEmployee && `for ${branchName}`}
+                    </CardDescription>
+                </div>
             </CardHeader>
-            <CardContent>
-                <ChartContainer config={chartConfig}>
-                    <AreaChart
-                        accessibilityLayer
-                        data={chartData}
-                        margin={{
-                            left: 12,
-                            right: 12,
-                        }}
-                    >
-                        <CartesianGrid vertical={false} />
+            <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis
                             dataKey="month"
                             tickLine={false}
@@ -64,41 +83,82 @@ export function Chart() {
                             tickMargin={8}
                             tickFormatter={(value) => value.slice(0, 3)}
                         />
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent indicator="dot" />}
+                        <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            width={40}
                         />
-                        <Area
-                            dataKey="mobile"
-                            type="natural"
-                            fill="var(--color-mobile)"
-                            fillOpacity={0.4}
-                            stroke="var(--color-mobile)"
-                            stackId="a"
+                        <Tooltip
+                            formatter={(value, name) => {
+                                if (name === 'Total Orders') {
+                                    return [value, name];
+                                }
+                                return [`₱${Number(value).toFixed(2)}`, name];
+                            }}
+                            labelFormatter={(label) => `Month: ${label}`}
                         />
-                        <Area
-                            dataKey="desktop"
-                            type="natural"
-                            fill="var(--color-desktop)"
-                            fillOpacity={0.4}
-                            stroke="var(--color-desktop)"
-                            stackId="a"
+                        <Legend />
+                        {showPaymentMethods && (
+                            <>
+                                <Area
+                                    dataKey="cash"
+                                    name="Cash"
+                                    stackId="1"
+                                    stroke="hsl(var(--primary))"
+                                    fill="hsl(var(--primary)/0.2)"
+                                />
+                                <Area
+                                    dataKey="card"
+                                    name="Card"
+                                    stackId="1"
+                                    stroke="hsl(var(--secondary))"
+                                    fill="hsl(var(--secondary)/0.2)"
+                                />
+                                <Area
+                                    dataKey="mobile_money"
+                                    name="Mobile Money"
+                                    stackId="1"
+                                    stroke="hsl(var(--accent))"
+                                    fill="hsl(var(--accent)/0.2)"
+                                />
+                                <Area
+                                    dataKey="bank_transfer"
+                                    name="Bank Transfer"
+                                    stackId="1"
+                                    stroke="hsl(var(--destructive))"
+                                    fill="hsl(var(--destructive)/0.2)"
+                                />
+                            </>
+                        )}
+                        <Bar
+                            dataKey="total_orders"
+                            name="Total Orders"
+                            fill="hsl(var(--primary))"
+                            radius={[4, 4, 0, 0]}
                         />
-                    </AreaChart>
-                </ChartContainer>
+                    </ComposedChart>
+                </ResponsiveContainer>
             </CardContent>
             <CardFooter>
-                <div className="flex w-full items-start gap-2 text-sm">
-                    <div className="grid gap-2">
-                        <div className="flex items-center gap-2 font-medium leading-none">
-                            Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
-                        </div>
-                        <div className="flex items-center gap-2 leading-none text-muted-foreground">
-                            January - June 2024
-                        </div>
+                <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-2 font-medium">
+                        {trend >= 0 ? (
+                            <TrendingUp className="h-4 w-4 text-green-500" />
+                        ) : (
+                            <TrendingDown className="h-4 w-4 text-red-500" />
+                        )}
+                        <span>
+                            {Math.abs(trend).toFixed(1)}% {trend >= 0 ? 'increase' : 'decrease'}
+                        </span>
                     </div>
+                    <span className="text-muted-foreground">
+                        {`${data[0]?.month} - ${data[data.length - 1]?.month} • `}
+                        {showPaymentMethods 
+                            ? `Revenue: ₱${totalRevenue.toFixed(2)}` 
+                            : `Orders: ${totalOrders}`}
+                    </span>
                 </div>
             </CardFooter>
         </Card>
-    )
+    );
 }

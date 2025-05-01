@@ -48,7 +48,11 @@ type Order = {
 }
 
 export default function OrdersIndex() {
-    const { orders } = usePage<{ orders: Order[] }>().props
+    const { orders, user_role } = usePage<{ 
+        orders: Order[]
+        user_role: string
+    }>().props
+    
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [globalFilter, setGlobalFilter] = React.useState("")
@@ -64,11 +68,12 @@ export default function OrdersIndex() {
             header: "Date",
             cell: ({ row }) => format(new Date(row.original.order_date), 'MMM dd, yyyy HH:mm'),
         },
-        {
+        // Only show branch column for admins
+        ...(user_role === 'Admin' ? [{
             accessorKey: "branch.branch_name",
             header: "Branch",
             cell: ({ row }) => row.original.branch.branch_name,
-        },
+        }] : []),
         {
             accessorKey: "cashier.name",
             header: "Cashier",
@@ -150,34 +155,38 @@ export default function OrdersIndex() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Sales/Orders" />
             <OrdersLayout>
-                <div className="space-y-2">
-                    <div className="flex justify-between">
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
                         <Input
-                            className="w-1/4"
+                            className="w-64"
                             placeholder="Search orders..."
                             value={globalFilter}
                             onChange={(e) => setGlobalFilter(e.target.value)}
                         />
+                        
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="ml-auto">
+                                <Button variant="outline">
                                     Columns <ChevronDown className="ml-2 h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {table.getAllColumns().map((column) => (
-                                    <DropdownMenuCheckboxItem
-                                        key={column.id}
-                                        checked={column.getIsVisible()}
-                                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                    >
-                                        {column.id}
-                                    </DropdownMenuCheckboxItem>
-                                ))}
+                                {table.getAllColumns()
+                                    .filter((column) => column.getCanHide())
+                                    .map((column) => (
+                                        <DropdownMenuCheckboxItem
+                                            key={column.id}
+                                            checked={column.getIsVisible()}
+                                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                        >
+                                            {column.id}
+                                        </DropdownMenuCheckboxItem>
+                                    ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-                    <div className="rounded-md border overflow-x-auto">
+
+                    <div className="rounded-md border">
                         <Table>
                             <TableHeader>
                                 {table.getHeaderGroups().map((headerGroup) => (
@@ -191,7 +200,7 @@ export default function OrdersIndex() {
                                 ))}
                             </TableHeader>
                             <TableBody>
-                                {table.getRowModel().rows.length ? (
+                                {table.getRowModel().rows?.length ? (
                                     table.getRowModel().rows.map((row) => (
                                         <TableRow key={row.id}>
                                             {row.getVisibleCells().map((cell) => (
@@ -203,7 +212,7 @@ export default function OrdersIndex() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={columns.length} className="text-center">
+                                        <TableCell colSpan={columns.length} className="h-24 text-center">
                                             No orders found.
                                         </TableCell>
                                     </TableRow>
@@ -211,6 +220,7 @@ export default function OrdersIndex() {
                             </TableBody>
                         </Table>
                     </div>
+
                     <div className="flex items-center justify-between space-x-2 py-4">
                         <Button
                             variant="outline"
