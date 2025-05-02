@@ -41,3 +41,30 @@ export interface User {
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
 }
+
+export interface MenuItem {
+    id: number;
+    name: string;
+    price: number;
+    weight: string;
+    category: string;
+    image: string;
+  }
+  
+  export interface OrderItem extends MenuItem {
+    quantity: number;
+  }
+  
+  export type PaymentMethod = "cash" | "credit_card" | "cashless_credit";
+  
+  export interface Order {
+    items: OrderItem[];
+    subtotal: number;
+    discount: number;
+    tax: number;
+    total: number;
+    paymentMethod?: PaymentMethod;
+    paid: boolean;
+    orderDate: Date;
+  }
+  
