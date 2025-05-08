@@ -3,46 +3,57 @@
 namespace App\Http\Controllers\Order;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Products;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Products; // This is correct, but we need to use it properly below
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
         $user = Auth::user();
-        $period = $request->input('period', '6months');
-        $startDate = $this->getStartDate($period);
+        $branchId = $request->query('branch_id');
         
-        $ordersQuery = Order::with(['branch', 'cashier'])
+        // Start with base query
+        $query = Order::with(['branch', 'cashier'])
             ->withCount('items')
-            ->when($request->has('period'), function($query) use ($startDate) {
-                $query->where('created_at', '>=', $startDate);
-            });
-        
-        // Apply branch filter for non-admin users
+            ->latest();
+
+        // Apply branch filter based on user role
         if ($user->role !== 'Admin') {
+            // For non-admin users (employees), only show orders from their branch
             if ($user->employee && $user->employee->branch_id) {
-                $ordersQuery->where('branch_id', $user->employee->branch_id);
+                $query->where('branch_id', $user->employee->branch_id)
+                      ->where('user_id', $user->id); // user_id is the cashier who created the order
             } else {
-                // If employee has no branch assigned, return empty
-                $ordersQuery->where('branch_id', -1);
+                // If employee doesn't have a branch assigned, show nothing
+                $query->where('branch_id', -1);
             }
+        } elseif ($branchId && $branchId !== 'all') {
+            // For admins, allow filtering by branch when branch_id is provided
+            $query->where('branch_id', $branchId);
         }
 
-        $orders = $ordersQuery->latest()->get();
+        $orders = $query->get();
 
-        return Inertia::render('orders/index', [
+        return inertia('orders/index', [
             'orders' => $orders->isEmpty() ? [] : $orders->toArray(),
-            'period' => $period,
-            'user_role' => $user->role, // Pass user role to frontend
+            'user_role' => $user->role,
+            'branches' => Branch::select('id', 'branch_name')->get(),
+            'current_branch' => $user->role !== 'Admin' ?
+                ($user->employee->branch_id ?? null) : null,
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                ]
+            ]
         ]);
     }
 
@@ -96,22 +107,28 @@ class OrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
             'items.*.discount' => 'required|numeric|min:0',
-            'total' => 'required|numeric|min:0',
-            'payment_method' => 'required|string|in:cash,card,mobile_money,bank_transfer',
+            'items.*.subtotal' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+            'payment_method' => 'required|string|in:cash,card,mobile',
+            'amount_received' => 'required_if:payment_method,cash|numeric|min:0',
+            'change_amount' => 'nullable|numeric|min:0',
+            'payment_reference' => 'nullable|string|max:255',
         ]);
-
         DB::beginTransaction();
-
+    
         try {
             $order = Order::create([
-                'total_amount' => $validated['total'],
+                'total_amount' => $validated['total_amount'],
                 'branch_id' => $validated['branch_id'],
                 'user_id' => $validated['cashier_id'],
                 'status' => 'completed',
                 'order_date' => now(),
                 'payment_method' => $validated['payment_method'],
+                'amount_received' => $validated['amount_received'] ?? $validated['total_amount'],
+                'change_amount' => $validated['change_amount'] ?? 0,
+                'payment_reference' => $validated['payment_reference'] ?? null,
             ]);
-
+    
             foreach ($validated['items'] as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -119,98 +136,29 @@ class OrderController extends Controller
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
                     'discount' => $item['discount'],
-                    'subtotal' => ($item['price'] * $item['quantity']) - $item['discount'],
+                    'subtotal' => $item['subtotal'],
                 ]);
-
                 Products::where('id', $item['product_id'])
                     ->decrement('product_quantity', $item['quantity']);
             }
-
+    
             DB::commit();
-
-            return redirect()->route('orders.show', $order->id)->with([
-                'success' => 'Order processed successfully!'
+    
+            // Load relationships for the receipt
+            $order->load(['items.product', 'branch', 'cashier']);
+    
+            // Redirect back with order data in session (flash)
+            return redirect()->back()->with([
+                'order' => $order,
+                'success' => 'Order processed successfully'
             ]);
+    
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->withErrors([
                 'error' => 'Failed to process order: ' . $e->getMessage()
             ]);
         }
-    }
-
-    public function getChartData(Request $request)
-    {
-        $period = $request->input('period', '6months');
-        $startDate = $this->getStartDate($period);
-
-        $connection = config('database.default');
-        $isSQLite = config("database.connections.{$connection}.driver") === 'sqlite';
-
-        if ($isSQLite) {
-            $chartData = Order::select(
-                DB::raw("strftime('%m', created_at) as month_num"),
-                DB::raw("strftime('%Y', created_at) as year"),
-                DB::raw("strftime('%Y-%m', created_at) as month_year"),
-                DB::raw('COUNT(*) as total'),
-                DB::raw('SUM(CASE WHEN payment_method = "cash" THEN 1 ELSE 0 END) as cash'),
-                DB::raw('SUM(CASE WHEN payment_method = "card" THEN 1 ELSE 0 END) as card'),
-                DB::raw('SUM(CASE WHEN payment_method = "mobile_money" THEN 1 ELSE 0 END) as mobile_money'),
-                DB::raw('SUM(CASE WHEN payment_method = "bank_transfer" THEN 1 ELSE 0 END) as bank_transfer')
-            );
-        } else {
-            $chartData = Order::select(
-                DB::raw('MONTHNAME(created_at) as month'),
-                DB::raw('YEAR(created_at) as year'),
-                DB::raw('COUNT(*) as total'),
-                DB::raw('SUM(CASE WHEN payment_method = "cash" THEN 1 ELSE 0 END) as cash'),
-                DB::raw('SUM(CASE WHEN payment_method = "card" THEN 1 ELSE 0 END) as card'),
-                DB::raw('SUM(CASE WHEN payment_method = "mobile_money" THEN 1 ELSE 0 END) as mobile_money'),
-                DB::raw('SUM(CASE WHEN payment_method = "bank_transfer" THEN 1 ELSE 0 END) as bank_transfer')
-            );
-        }
-
-        $chartData = $chartData->where('created_at', '>=', $startDate)
-            ->groupBy($isSQLite ? ['year', 'month_num'] : ['year', 'month'])
-            ->orderBy('year')
-            ->orderBy($isSQLite ? 'month_num' : DB::raw('MONTH(created_at)'))
-            ->get()
-            ->map(function ($item) use ($isSQLite) {
-                if ($isSQLite) {
-                    $monthName = Carbon::create()->month($item->month_num)->format('F');
-                    return [
-                        'month' => $monthName,
-                        'month_year' => $item->month_year,
-                        'cash' => $item->cash,
-                        'card' => $item->card,
-                        'mobile_money' => $item->mobile_money,
-                        'bank_transfer' => $item->bank_transfer,
-                        'total' => $item->total,
-                    ];
-                }
-                return [
-                    'month' => $item->month,
-                    'cash' => $item->cash,
-                    'card' => $item->card,
-                    'mobile_money' => $item->mobile_money,
-                    'bank_transfer' => $item->bank_transfer,
-                    'total' => $item->total,
-                ];
-            });
-
-        return response()->json($chartData);
-    }
-
-    protected function getStartDate($period)
-    {
-        return match ($period) {
-            '3months' => now()->subMonths(3),
-            '6months' => now()->subMonths(6),
-            '12months' => now()->subMonths(12),
-            'year' => now()->startOfYear(),
-            'custom' => now()->subDays(30),
-            default => now()->subMonths(6),
-        };
     }
 
     protected function generateReceiptData(Order $order): array
@@ -228,9 +176,8 @@ class OrderController extends Controller
                 ];
             }),
             'total' => $order->total_amount,
-            'branch' => $order->branch->branch_name,
+            'branch' => $order->branch->name,
             'cashier' => $order->cashier->name,
-            'payment_method' => $order->payment_method,
         ];
     }
 }

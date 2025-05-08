@@ -28,8 +28,8 @@ class BranchesController extends Controller
      */
     public function create()
     {
-        if (Gate::denies('branch.create')) { // Changed from 'branche.create' to 'branch.create' for consistency
-            return redirect()->route('branches.index')->with('error', 'You are not authorized to perform this action');
+        if (Gate::denies('branches.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
         }
 
         return Inertia::render('branches/create');
@@ -58,6 +58,10 @@ class BranchesController extends Controller
      */
     public function show(string $id)
     {
+        if (Gate::denies('branches.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $branch = Branch::find($id);
         
         if (!$branch) {
@@ -72,6 +76,10 @@ class BranchesController extends Controller
      */
     public function edit(string $id)
     {
+        if (Gate::denies('branches.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $branch = Branch::find($id);
 
         if (!$branch) {
@@ -119,6 +127,10 @@ class BranchesController extends Controller
      */
     public function destroy(string $id)
     {
+        if (Gate::denies('branches.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }   
+
         $branch = Branch::find($id);
         
         if (!$branch) {

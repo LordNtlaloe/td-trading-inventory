@@ -1,374 +1,149 @@
-// /* eslint-disable @typescript-eslint/no-explicit-any */
-// import { useState, useEffect } from 'react';
-// import { Head, usePage, router } from '@inertiajs/react';
-// import POSLayout from '@/layouts/pos/pos-layout';
-// import { type BreadcrumbItem } from '@/types';
-// import ProductList from '@/components/products/ProductList';
-// import PaymentDialog from '@/components/products/PaymentDialog';
-// import { Receipt, PageProps } from '@/lib/types';
-// import { PosProvider, usePos } from '@/contexts/CartContext';
-// import { Button } from '@/components/ui/button';
-// import { MdReceipt } from 'react-icons/md';
-// import {
-//     Dialog,
-//     DialogContent,
-//     DialogHeader,
-//     DialogTitle,
-//     DialogDescription,
-// } from '@/components/ui/dialog';
-// import { Label } from '@/components/ui/label';
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// const breadcrumbs: BreadcrumbItem[] = [
-//     {
-//         title: 'POS',
-//         href: '/pos',
-//     },
-// ];
-
-// export default function POS() {
-//     const { props } = usePage<PageProps>();
-
-//     return (
-//         <PosProvider>
-//             <POSContent {...props} />
-//         </PosProvider>
-//     );
-// }
-
-// function POSContent(props: PageProps & { requires_branch_selection?: boolean }) {
-//     const {
-//         filtered_products: products = [],
-//         auth,
-//         employee,
-//         branches = [],
-//         requires_branch_selection = false
-//     } = props;
-
-//     const {
-//         clearCart,
-//         closePaymentDialog,
-//         isPaymentDialogVisible,
-//     } = usePos();
-
-//     const [currentReceipt, setCurrentReceipt] = useState<Receipt | null>(null);
-//     const [showReceipt, setShowReceipt] = useState(false);
-//     const [showBranchDialog, setShowBranchDialog] = useState(requires_branch_selection);
-//     const [selectedBranch, setSelectedBranch] = useState<string>('');
-
-//     useEffect(() => {
-//         // Show branch dialog if required
-//         setShowBranchDialog(requires_branch_selection);
-//     }, [requires_branch_selection]);
-
-//     const handleBranchSelect = () => {
-//         if (!selectedBranch) {
-//             alert('Please select a branch');
-//             return;
-//         }
-
-//         router.post('/pos/select-branch', {
-//             branch_id: selectedBranch,
-//         }, {
-//             onSuccess: () => {
-//                 setShowBranchDialog(false);
-//             },
-//             onError: () => {
-//                 alert('Failed to select branch. Please try again.');
-//             }
-//         });
-//     };
-
-//     const branchName = auth.user.role === 'manager'
-//         ? 'All Branches'
-//         : employee?.branch?.branch_name || 'Branch';
-
-//     const branchLocation = auth.user.role === 'manager'
-//         ? 'All Branches'
-//         : employee?.branch?.branch_location || 'Branch';
-
-//     const handleProcessPaymentSuccess = (receiptData: Receipt) => {
-//         setCurrentReceipt(receiptData);
-//         setShowReceipt(true);
-//         clearCart();
-//     };
-
-//     return (
-//         <POSLayout breadcrumbs={breadcrumbs}>
-//             <Head>
-//                 <title>POS</title>
-//             </Head>
-
-//             {/* Branch Selection Dialog */}
-//             <Dialog open={showBranchDialog} onOpenChange={setShowBranchDialog}>
-//                 <DialogContent className="sm:max-w-[425px]">
-//                     <DialogHeader>
-//                         <DialogTitle>Select Your Branch</DialogTitle>
-//                         <DialogDescription>
-//                             You need to select a branch to work with before using the POS system.
-//                         </DialogDescription>
-//                     </DialogHeader>
-//                     <div className="grid gap-4 py-4">
-//                         <div className="grid grid-cols-4 items-center gap-4">
-//                             <Label htmlFor="branch" className="text-right">
-//                                 Branch
-//                             </Label>
-//                             <Select
-//                                 value={selectedBranch}
-//                                 onValueChange={setSelectedBranch}
-//                             >
-//                                 <SelectTrigger className="col-span-3">
-//                                     <SelectValue placeholder="Select a branch" />
-//                                 </SelectTrigger>
-//                                 <SelectContent>
-//                                     {branches.map((branch: any) => (
-//                                         <SelectItem key={branch.id} value={branch.id.toString()}>
-//                                             {branch.branch_name} - {branch.branch_location}
-//                                         </SelectItem>
-//                                     ))}
-//                                 </SelectContent>
-//                             </Select>
-//                         </div>
-//                     </div>
-//                     <div className="flex justify-end gap-2">
-//                         <Button
-//                             variant="outline"
-//                             onClick={() => router.get('/dashboard')}
-//                         >
-//                             Cancel
-//                         </Button>
-//                         <Button
-//                             onClick={handleBranchSelect}
-//                             disabled={!selectedBranch}
-//                         >
-//                             Continue
-//                         </Button>
-//                     </div>
-//                 </DialogContent>
-//             </Dialog>
-
-//             {/* Main POS Content - Only shown when branch is selected */}
-//             {!showBranchDialog && (
-//                 <div className="container mx-auto px-5">
-//                     <div className="flex lg:flex-row flex-col-reverse gap-4">
-//                         <ProductList
-//                             products={products || []}
-//                             branchName={branchName}
-//                             user={auth.user}
-//                         />
-//                     </div>
-//                 </div>
-//             )}
-
-//             {/* Receipt Modal */}
-//             {showReceipt && currentReceipt && (
-//                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-//                     <div className="bg-white p-6 rounded-lg max-w-md w-full max-h-[90vh] overflow-auto">
-//                         <div className="flex justify-between items-center mb-4">
-//                             <h2 className="text-xl font-bold">Order Receipt</h2>
-//                             <MdReceipt className="text-2xl" />
-//                         </div>
-
-//                         <div className="space-y-2 mb-4">
-//                             <p><span className="font-medium">Order #:</span> {currentReceipt.id}</p>
-//                             <p><span className="font-medium">Date:</span> {new Date(currentReceipt.date).toLocaleString()}</p>
-//                             <p><span className="font-medium">Cashier:</span> {currentReceipt.cashier}</p>
-//                             <p><span className="font-medium">Branch:</span> {currentReceipt.branch}</p>
-//                         </div>
-
-//                         <div className="border-t border-b py-4 my-4">
-//                             <h3 className="font-medium mb-2">Items:</h3>
-//                             {currentReceipt.items.map(item => (
-//                                 <div key={item.id} className="flex justify-between py-1">
-//                                     <span>{item.product.product_name} × {item.quantity}</span>
-//                                     <span>M{(item.product.product_price * item.quantity).toFixed(2)}</span>
-//                                 </div>
-//                             ))}
-//                         </div>
-
-//                         <div className="space-y-2">
-//                             <div className="flex justify-between">
-//                                 <span className="font-medium">Subtotal:</span>
-//                                 <span>M{currentReceipt.items.reduce((sum, item) => sum + (item.product.product_price * item.quantity), 0).toFixed(2)}</span>
-//                             </div>
-//                             {currentReceipt.items.some(item => item.discount > 0) && (
-//                                 <div className="flex justify-between text-red-500">
-//                                     <span className="font-medium">Discount:</span>
-//                                     <span>-M{currentReceipt.items.reduce((sum, item) => sum + item.discount, 0).toFixed(2)}</span>
-//                                 </div>
-//                             )}
-//                             <div className="flex justify-between font-bold text-lg">
-//                                 <span>Total:</span>
-//                                 <span>M{currentReceipt.total.toFixed(2)}</span>
-//                             </div>
-//                         </div>
-
-//                         <Button
-//                             className="w-full mt-6"
-//                             onClick={() => setShowReceipt(false)}
-//                         >
-//                             Close Receipt
-//                         </Button>
-//                     </div>
-//                 </div>
-//             )}
-
-//             <PaymentDialog
-//                 open={isPaymentDialogVisible}
-//                 onClose={closePaymentDialog}
-//                 onSuccess={handleProcessPaymentSuccess}
-//                 branchId={employee?.branch?.id ?? 0}
-//                 cashierId={auth.user.id}
-//                 branchName={branchName}
-//                 branchLocation={branchLocation}
-//                 cashierName={auth.user.name}
-//             />
-//         </POSLayout>
-//     );
-// }
-
-
-import { useState } from "react";
-import { Head } from '@inertiajs/react';
+import { useState } from 'react';
+import { Head, usePage } from '@inertiajs/react';
 import POSLayout from '@/layouts/pos/pos-layout';
 import { type BreadcrumbItem } from '@/types';
+import ProductList from '@/components/products/ProductList';
+import PaymentDialog from '@/components/products/PaymentDialog';
+import { Receipt, PageProps } from '@/lib/types';
+import { PosProvider, usePos } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
-import { MdHelp } from "react-icons/md";
-import OrderSummary from "@/components/OrderSummary";
-import Image from "@/components/Image";
+import { MdReceipt } from 'react-icons/md';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'POS', href: '/pos' },
+    {
+        title: 'POS',
+        href: '/pos',
+    },
 ];
 
-export default function POS({ 
-    filtered_products: products = [], 
-    auth, 
-    employee, 
-}) {
-    const [orderItems, setOrderItems] = useState([]);
-    const [activeCategory, setActiveCategory] = useState("All Items");
-    
-    const categories = ["All Items", "Food", "Alcohol", "Cold Drinks", "Hot Drinks"];
+export default function POS() {
+    const { props } = usePage<PageProps>();
 
-    const addToOrder = (product) => {
-        setOrderItems(prev => {
-            const existingItem = prev.find(item => item.id === product.id);
-            if (existingItem) {
-                return prev.map(item =>
-                    item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-                );
-            } else {
-                return [...prev, { 
-                    ...product, 
-                    quantity: 1,
-                    name: product.product_name,
-                    price: product.product_price,
-                    image: product.image || '/placeholder-product.png'
-                }];
-            }
-        });
-    };
+    return (
+        <PosProvider>
+            <POSContent {...props} />
+        </PosProvider>
+    );
+}
 
-    const updateItemQuantity = (id, newQuantity) => {
-        if (newQuantity <= 0) {
-            setOrderItems(prev => prev.filter(item => item.id !== id));
-        } else {
-            setOrderItems(prev =>
-                prev.map(item => item.id === id ? { ...item, quantity: newQuantity } : item)
-            );
-        }
-    };
+function POSContent(props: PageProps) {
+    const { filtered_products: products = [], auth, employee } = props;
+    const { 
+        clearCart, 
+        closePaymentDialog, 
+        isPaymentDialogVisible,
+    } = usePos();
 
-    const clearOrder = () => {
-        setOrderItems([]);
-    };
+    const [currentReceipt, setCurrentReceipt] = useState<Receipt | null>(null);
+    const [showReceipt, setShowReceipt] = useState(false);
 
-    const filteredProducts = activeCategory === "All Items" 
-        ? products 
-        : products.filter(product => product.category === activeCategory);
-
-    const branchName = auth.user.role === 'manager' 
-        ? 'All Branches' 
+    const branchName = auth.user.role === 'manager'
+        ? 'All Branches'
         : employee?.branch?.branch_name || 'Branch';
+
+    const branchLocation = auth.user.role === 'manager'
+        ? 'All Branches'
+        : employee?.branch?.branch_location || 'Branch';
+
+    const handleProcessPaymentSuccess = (receiptData: Receipt) => {
+        setCurrentReceipt(receiptData);
+        setShowReceipt(true);
+        clearCart();
+    };
+
+    // Calculate item subtotal with discount applied
+    const calculateItemSubtotal = (item) => {
+        const subtotal = (item.product.product_price * item.quantity);
+        return subtotal - (item.discount || 0);
+    };
 
     return (
         <POSLayout breadcrumbs={breadcrumbs}>
-            <Head title="POS" />
-            
-            <div className="min-h-screen flex items-center justify-center py-10 px-4">
-                <div className=" rounded-3xl shadow-xl w-full max-w-6xl overflow-hidden">
-                    <div className="grid md:grid-cols-7">
-                        {/* Left section (Menu) - 4/7 */}
-                        <div className="md:col-span-4 p-6">
-                            {/* Shop Header */}
-                            <div className="flex justify-between items-start mb-8">
-                                <div>
-                                    <h1 className="text-2xl font-bold">{branchName}</h1>
-                                    <p className="text-sm">Location: {employee?.branch?.branch_location || 'ALL'}</p>
-                                </div>
-                                <Button variant="outline" size="sm" className="rounded-full">
-                                    <MdHelp className="h-5 w-5 mr-1" />
-                                    Help
-                                </Button>
-                            </div>
-
-                            {/* Categories */}
-                            <div className="flex overflow-x-auto space-x-2 pb-4 mb-6">
-                                {categories.map((category) => (
-                                    <button
-                                        key={category}
-                                        className={`px-6 py-3 whitespace-nowrap rounded-full ${
-                                            activeCategory === category
-                                                ? "bg-secondary"
-                                                : "bg-primary"
-                                        }`}
-                                        onClick={() => setActiveCategory(category)}
-                                    >
-                                        {category}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Product Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {filteredProducts.map((product) => (
-                                    <div 
-                                        key={product.id}
-                                        className="border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                                        onClick={() => addToOrder(product)}
-                                    >
-                                        <div className="p-4">
-                                            <h3 className="font-semibold">{product.product_name}</h3>
-                                            <p className="text-sm">{product.weight || 'N/A'}</p>
-                                            <div className="flex justify-between items-center mt-6">
-                                                <span className="text-xl font-bold">
-                                                    M{product.product_price.toFixed(2)}
-                                                </span>
-                                                <div className="w-24 h-24 rounded-md overflow-hidden">
-                                                    <Image 
-                                                        src={product.image || '/placeholder-product.png'}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Right section (Order) - 3/7 */}
-                        <div className="md:col-span-3 p-6">
-                            <OrderSummary
-                                orderItems={orderItems}
-                                updateItemQuantity={updateItemQuantity}
-                                clearOrder={clearOrder}
-                            />
-                        </div>
-                    </div>
+            <Head>
+                <title>POS</title>
+            </Head>
+            <div className="container mx-auto px-5">
+                <div className="flex lg:flex-row flex-col-reverse gap-4">
+                    <ProductList
+                        products={products || []}
+                        branchName={branchName}
+                        user={auth.user}
+                    />
                 </div>
             </div>
+
+            {/* Receipt Modal */}
+            {showReceipt && currentReceipt && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white p-6 rounded-lg max-w-md w-full max-h-[90vh] overflow-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">Order Receipt</h2>
+                            <MdReceipt className="text-2xl" />
+                        </div>
+                        
+                        <div className="space-y-2 mb-4">
+                            <p><span className="font-medium">Order #:</span> {currentReceipt.id}</p>
+                            <p><span className="font-medium">Date:</span> {new Date(currentReceipt.date).toLocaleString()}</p>
+                            <p><span className="font-medium">Cashier:</span> {currentReceipt.cashier}</p>
+                            <p><span className="font-medium">Branch:</span> {currentReceipt.branch}</p>
+                            <p><span className="font-medium">Payment Method:</span> {currentReceipt.paymentMethod}</p>
+                            {currentReceipt.paymentMethod === 'cash' && (
+                                <>
+                                    <p><span className="font-medium">Amount Received:</span> M{currentReceipt.amount_received.toFixed(2)}</p>
+                                    <p><span className="font-medium">Change:</span> M{currentReceipt.change_amount.toFixed(2)}</p>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="border-t border-b py-4 my-4">
+                            <h3 className="font-medium mb-2">Items:</h3>
+                            {currentReceipt.items.map(item => (
+                                <div key={item.id} className="flex justify-between py-1">
+                                    <span>{item.product.product_name} × {item.quantity}</span>
+                                    <span>M{calculateItemSubtotal(item).toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <span className="font-medium">Subtotal:</span>
+                                <span>M{currentReceipt.items.reduce((sum, item) => 
+                                    sum + (item.product.product_price * item.quantity), 0).toFixed(2)}</span>
+                            </div>
+                            {currentReceipt.items.some(item => item.discount > 0) && (
+                                <div className="flex justify-between text-red-500">
+                                    <span className="font-medium">Discount:</span>
+                                    <span>-M{currentReceipt.items.reduce((sum, item) => 
+                                        sum + (item.discount || 0), 0).toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold text-lg">
+                                <span>Total:</span>
+                                <span>M{currentReceipt.total.toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <Button 
+                            className="w-full mt-6"
+                            onClick={() => setShowReceipt(false)}
+                        >
+                            Close Receipt
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            <PaymentDialog
+                open={isPaymentDialogVisible}
+                onClose={closePaymentDialog}
+                onSuccess={handleProcessPaymentSuccess}
+                branchId={employee?.branch?.id ?? 0}
+                cashierId={auth.user.id}
+                branchName={branchName}
+                branchLocation={branchLocation}
+                cashierName={auth.user.name}
+            />
         </POSLayout>
     );
 }

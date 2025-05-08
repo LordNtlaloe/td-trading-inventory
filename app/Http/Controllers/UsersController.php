@@ -17,6 +17,9 @@ class UsersController extends Controller
      */
     public function index()
     {
+        if (Gate::denies('users.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
         return Inertia::render('users/index', [
             "users" => User::all()
         ]);
@@ -63,6 +66,10 @@ class UsersController extends Controller
      */
     public function edit(string $id)
     {
+        if (Gate::denies('users.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $user = User::find($id);
 
         if(!$user){

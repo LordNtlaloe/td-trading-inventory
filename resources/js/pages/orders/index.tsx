@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Head, Link, usePage } from "@inertiajs/react"
+import { Head, Link, usePage, router } from "@inertiajs/react"
 import { type BreadcrumbItem } from "@/types"
 import AppLayout from "@/layouts/app-layout"
 import OrdersLayout from "@/layouts/orders/layout"
@@ -30,6 +30,8 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: "Orders", href: "/orders" }]
 
@@ -43,19 +45,37 @@ type Order = {
         branch_name: string
     }
     cashier: {
+        id: number
         name: string
     }
 }
-
 export default function OrdersIndex() {
-    const { orders, user_role } = usePage<{ 
+    const { orders, user_role, branches, current_branch } = usePage<{ 
         orders: Order[]
         user_role: string
+        branches: { id: number; branch_name: string }[]
+        current_branch: number | null
+        auth: {
+            user: {
+                id: number
+                name: string
+            }
+        }
     }>().props
     
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
     const [globalFilter, setGlobalFilter] = React.useState("")
+    const [selectedBranch, setSelectedBranch] = React.useState<string>(
+        current_branch ? current_branch.toString() : "all"
+    )
+
+    // Helper function to get branch name from ID
+    const getBranchName = (branchId: string): string => {
+        if (branchId === "all") return "All Branches";
+        const branch = branches.find(b => b.id.toString() === branchId);
+        return branch ? branch.branch_name : "Select Branch";
+    };
 
     const columns: ColumnDef<Order>[] = [
         {
@@ -75,9 +95,10 @@ export default function OrdersIndex() {
             cell: ({ row }) => row.original.branch.branch_name,
         }] : []),
         {
-            accessorKey: "cashier.name",
+            accessorKey: "Cashier",
             header: "Cashier",
             cell: ({ row }) => row.original.cashier.name,
+            accessorFn: (row) => row.cashier.id
         },
         {
             accessorKey: "items_count",
@@ -151,6 +172,11 @@ export default function OrdersIndex() {
         },
     })
 
+    const handleBranchChange = (branchId: string) => {
+        setSelectedBranch(branchId)
+        router.get('/orders', { branch_id: branchId }, { preserveState: true })
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Sales/Orders" />
@@ -164,26 +190,49 @@ export default function OrdersIndex() {
                             onChange={(e) => setGlobalFilter(e.target.value)}
                         />
                         
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    Columns <ChevronDown className="ml-2 h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {table.getAllColumns()
-                                    .filter((column) => column.getCanHide())
-                                    .map((column) => (
-                                        <DropdownMenuCheckboxItem
-                                            key={column.id}
-                                            checked={column.getIsVisible()}
-                                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                        >
-                                            {column.id}
-                                        </DropdownMenuCheckboxItem>
-                                    ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-2">
+                            {user_role === 'Admin' && (
+                                <Select
+                                    value={selectedBranch}
+                                    onValueChange={handleBranchChange}
+                                >
+                                    <SelectTrigger className="w-[250px]">
+                                        <SelectValue>
+                                            {getBranchName(selectedBranch)}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Branches</SelectItem>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {branch.branch_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline">
+                                        Columns <ChevronDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    {table.getAllColumns()
+                                        .filter((column) => column.getCanHide())
+                                        .map((column) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={column.id}
+                                                checked={column.getIsVisible()}
+                                                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                            >
+                                                {column.id}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
 
                     <div className="rounded-md border">
@@ -222,22 +271,28 @@ export default function OrdersIndex() {
                     </div>
 
                     <div className="flex items-center justify-between space-x-2 py-4">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => table.previousPage()}
-                            disabled={!table.getCanPreviousPage()}
-                        >
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => table.nextPage()}
-                            disabled={!table.getCanNextPage()}
-                        >
-                            Next
-                        </Button>
+                        <div className="flex-1 text-sm text-muted-foreground">
+                            Showing {table.getFilteredRowModel().rows.length} of{' '}
+                            {orders?.length || 0} orders
+                        </div>
+                        <div className="space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => table.previousPage()}
+                                disabled={!table.getCanPreviousPage()}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => table.nextPage()}
+                                disabled={!table.getCanNextPage()}
+                            >
+                                Next
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </OrdersLayout>

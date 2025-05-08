@@ -30,6 +30,8 @@ export interface CartItem {
 }
 
 export interface Receipt {
+  change_amount: any;
+  amount_received: any;
   id: string;
   date: Date;
   items: CartItem[];

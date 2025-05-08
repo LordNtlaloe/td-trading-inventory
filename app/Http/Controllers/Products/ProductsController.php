@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Gate;
 
 class ProductsController extends Controller
 {
@@ -49,7 +50,11 @@ class ProductsController extends Controller
      * Show the form for creating a new resource.
      */
     public function create()
-    {
+    {    
+        if (Gate::denies('products.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $user = Auth::user();
 
         // For employees, only allow creating products for their branch
@@ -125,6 +130,10 @@ class ProductsController extends Controller
      */
     public function edit(string $id)
     {
+        if (Gate::denies('products.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $product = Products::findOrFail($id);
         $user = Auth::user();
 

@@ -14,26 +14,30 @@ export default function ShoppingCart() {
         increaseQuantity,
         decreaseQuantity,
         removeFromCart,
-        applyDiscount,
-        removeDiscount,
+        applyCartDiscount,
+        removeCartDiscount,
         calculateTotals,
     } = usePos();
 
     const { subtotal, totalDiscount, total } = calculateTotals();
 
     const [discountAmount, setDiscountAmount] = useState('');
+    const [discountApplied, setDiscountApplied] = useState(false);
 
     const handleApplyDiscount = () => {
         const amount = parseFloat(discountAmount);
-        if (!isNaN(amount)) {
+        if (!isNaN(amount) && amount > 0) {
             // Apply discount but don't let it exceed the subtotal
             const effectiveDiscount = Math.min(amount, subtotal);
-            applyDiscount({
-                type: 'fixed',
-                value: effectiveDiscount,
-            });
+            applyCartDiscount(effectiveDiscount);
+            setDiscountApplied(true);
             setDiscountAmount('');
         }
+    };
+
+    const handleRemoveDiscount = () => {
+        removeCartDiscount();
+        setDiscountApplied(false);
     };
 
     return (
@@ -45,7 +49,18 @@ export default function ShoppingCart() {
                     cart.map((item) => (
                         <CartItem
                             key={item.id}
-                            item={item}
+                            item={{
+                                ...item,
+                                discount: 0,
+                                product: {
+                                    ...item.product,
+                                    product_category: '',
+                                    product_commodity: '',
+                                    product_grade: '',
+                                    branch: null,
+                                    branch_id: 0
+                                }
+                            }}
                             onIncrease={() => increaseQuantity(item.product.id)}
                             onDecrease={() => decreaseQuantity(item.product.id)}
                             onRemove={() => removeFromCart(item.product.id)}
@@ -72,7 +87,7 @@ export default function ShoppingCart() {
                         <Button
                             variant="link"
                             className="text-red-500 p-0 h-auto"
-                            onClick={removeDiscount}
+                            onClick={handleRemoveDiscount}
                         >
                             Remove Discount
                         </Button>
@@ -85,33 +100,35 @@ export default function ShoppingCart() {
             </div>
 
             {/* Fixed Amount Discount Input */}
-            <div className="mt-4 space-y-2">
-                <Label htmlFor="discount">Apply Discount (Fixed Amount)</Label>
-                <div className="flex gap-2">
-                    <Input
-                        id="discount"
-                        type="number"
-                        value={discountAmount}
-                        onChange={(e) => setDiscountAmount(e.target.value)}
-                        placeholder="Enter discount amount"
-                        className="flex-1"
-                        min="0"
-                        step="0.01"
-                    />
-                    <Button
-                        variant="outline"
-                        onClick={handleApplyDiscount}
-                        disabled={!discountAmount || cart.length === 0}
-                    >
-                        Apply
-                    </Button>
+            {!discountApplied && (
+                <div className="mt-4 space-y-2">
+                    <Label htmlFor="discount">Apply Discount (Fixed Amount)</Label>
+                    <div className="flex gap-2">
+                        <Input
+                            id="discount"
+                            type="number"
+                            value={discountAmount}
+                            onChange={(e) => setDiscountAmount(e.target.value)}
+                            placeholder="Enter discount amount"
+                            className="flex-1"
+                            min="0"
+                            step="0.01"
+                        />
+                        <Button
+                            variant="outline"
+                            onClick={handleApplyDiscount}
+                            disabled={!discountAmount || cart.length === 0 || parseFloat(discountAmount) <= 0}
+                        >
+                            Apply
+                        </Button>
+                    </div>
+                    {discountAmount && parseFloat(discountAmount) > subtotal && (
+                        <p className="text-sm text-red-500">
+                            Discount cannot exceed subtotal. Will be capped at M{subtotal.toFixed(2)}
+                        </p>
+                    )}
                 </div>
-                {discountAmount && parseFloat(discountAmount) > subtotal && (
-                    <p className="text-sm text-red-500">
-                        Discount cannot exceed subtotal. Will be capped at M{subtotal.toFixed(2)}
-                    </p>
-                )}
-            </div>
+            )}
 
             <Button
                 className="w-full mt-4"

@@ -83,6 +83,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return redirect()->route('pos');
     })->middleware('auth')->name('pos.select-branch');
 });
+
 Route::middleware(['auth', 'verified'])->group(function () {
     // Orders
     Route::get('/orders', [OrderController::class, 'index'])->name('orders');

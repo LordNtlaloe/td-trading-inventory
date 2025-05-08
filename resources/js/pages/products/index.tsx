@@ -75,7 +75,7 @@ export default function ProductsIndex() {
         {
             accessorKey: "product_price",
             header: "Price",
-            cell: ({ row }) => `$${row.original.product_price.toFixed(2)}`,
+            cell: ({ row }) => `M${row.original.product_price.toFixed(2)}`,
         },
         {
             accessorKey: "product_quantity",

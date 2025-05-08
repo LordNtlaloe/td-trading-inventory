@@ -21,6 +21,10 @@ class EmployeesController extends Controller
      */
     public function index()
     {
+        if (Gate::denies('employeees.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $employees = Employee::with(['user', 'branch'])
             ->get()
             ->map(function ($employee) {
@@ -50,6 +54,10 @@ class EmployeesController extends Controller
      */
     public function create()
     {
+        if (Gate::denies('employeees.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         return Inertia::render('employees/create', [
             'branches' => Branch::all(),
             'users' => User::whereDoesntHave('employee')->get()
@@ -121,6 +129,10 @@ class EmployeesController extends Controller
      */
     public function show(string $id)
     {
+        if (Gate::denies('employeees.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $employee = Employee::with(['user', 'branch'])->find($id);
 
         if (!$employee) {
@@ -203,6 +215,10 @@ class EmployeesController extends Controller
      */
     public function destroy(string $id)
     {
+        if (Gate::denies('employeees.manage')) { 
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to perform this action');
+        }
+
         $employee = Employee::find($id);
 
         if (!$employee) {

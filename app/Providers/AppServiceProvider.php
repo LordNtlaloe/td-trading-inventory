@@ -27,6 +27,24 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('branches.manage', function (?User $user) {
             return in_array($user?->role, ['Admin', 'Manager']);
         });
+
+        Gate::define('products.manage', function (?User $user) {
+            return in_array($user?->role, ['Admin', 'Manager']);
+        });
+
+        Gate::define('employees.manage', function (?User $user) {
+            return in_array($user?->role, ['Admin', 'Manager']);
+        });
+
+        Gate::define('users.manage', function (?User $user) {
+            return in_array($user?->role, ['Admin', 'Manager']);
+        });
+
+        Gate::define('orders.manage', function (?User $user) {
+            return in_array($user?->role, ['Admin', 'Manager']);
+        });
+
+        
         Gate::define('create', function ($user) {
             return $user->role === 'Admin';
         });

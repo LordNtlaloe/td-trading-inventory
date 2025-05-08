@@ -1,10 +1,9 @@
-import { NavFooter } from '@/components/general/nav-footer';
 import { NavMain } from '@/components/general/nav-main';
 import { NavUser } from '@/components/general/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { SharedData, type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, MapPinIcon, Package, Monitor, User, Users, Receipt } from 'lucide-react';
+import { LayoutGrid, MapPinIcon, Package, Monitor, User, Users, Receipt } from 'lucide-react';
 import AppLogo from './app-logo';
 
 // Define all possible nav items (unchanged)
@@ -46,19 +45,6 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits',
-        icon: BookOpen,
-    },
-];
-
 export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
 
@@ -90,11 +76,10 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={filteredNavItems} /> {/* Pass filtered items */}
+                <NavMain items={filteredNavItems} />
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
