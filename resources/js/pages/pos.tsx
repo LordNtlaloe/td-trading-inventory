@@ -28,9 +28,9 @@ export default function POS() {
 
 function POSContent(props: PageProps) {
     const { filtered_products: products = [], auth, employee } = props;
-    const { 
-        clearCart, 
-        closePaymentDialog, 
+    const {
+        clearCart,
+        closePaymentDialog,
         isPaymentDialogVisible,
     } = usePos();
 
@@ -80,7 +80,7 @@ function POSContent(props: PageProps) {
                             <h2 className="text-xl font-bold">Order Receipt</h2>
                             <MdReceipt className="text-2xl" />
                         </div>
-                        
+
                         <div className="space-y-2 mb-4">
                             <p><span className="font-medium">Order #:</span> {currentReceipt.id}</p>
                             <p><span className="font-medium">Date:</span> {new Date(currentReceipt.date).toLocaleString()}</p>
@@ -108,13 +108,13 @@ function POSContent(props: PageProps) {
                         <div className="space-y-2">
                             <div className="flex justify-between">
                                 <span className="font-medium">Subtotal:</span>
-                                <span>M{currentReceipt.items.reduce((sum, item) => 
+                                <span>M{currentReceipt.items.reduce((sum, item) =>
                                     sum + (item.product.product_price * item.quantity), 0).toFixed(2)}</span>
                             </div>
                             {currentReceipt.items.some(item => item.discount > 0) && (
                                 <div className="flex justify-between text-red-500">
                                     <span className="font-medium">Discount:</span>
-                                    <span>-M{currentReceipt.items.reduce((sum, item) => 
+                                    <span>-M{currentReceipt.items.reduce((sum, item) =>
                                         sum + (item.discount || 0), 0).toFixed(2)}</span>
                                 </div>
                             )}
@@ -124,7 +124,7 @@ function POSContent(props: PageProps) {
                             </div>
                         </div>
 
-                        <Button 
+                        <Button
                             className="w-full mt-6"
                             onClick={() => setShowReceipt(false)}
                         >

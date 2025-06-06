@@ -3,10 +3,10 @@ import { router, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { usePos } from '@/contexts/CartContext';
 import { MdFileDownload } from 'react-icons/md';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useReactToPrint } from "react-to-print";
+import { useState, useEffect, useCallback } from 'react';
+import {render } from 'react-thermal-printer';
 import { Receipt } from '@/lib/types';
-
+import { ReceiptDialog } from './ReceiptDialog';
 interface PaymentDialogProps {
   open: boolean;
   onClose: () => void;
@@ -78,11 +78,6 @@ export default function PaymentDialog({
   const [changeAmount, setChangeAmount] = useState('0.00');
   const [paymentReference, setPaymentReference] = useState('');
 
-  const contentRef = useRef<HTMLDivElement>(null);
-  const reactToPrintFn = useReactToPrint({
-    contentRef
-  });
-
   useEffect(() => {
     setAmountReceived(total.toString());
   }, [total]);
@@ -129,6 +124,25 @@ export default function PaymentDialog({
     });
   }, [cart, total, paymentMethod, amountReceived, changeAmount, paymentReference, setData, branchId, cashierId]);
 
+  const [port, setPort] = useState();
+  
+  const print_receipt = async () => {
+    const receipt = <ReceiptDialog order={orderData} branchName={branchName} cashierName={cashierName} />
+    const data =  await render(receipt);
+    let _port = port;
+    if(_port == null){
+      _port = await navigator.serial.requestPort();
+      await _port.open({baudRate: 9600});
+      setPort(_port)
+    }
+
+    const writer = _port.writable?.getWriter();
+    if(writer != null){
+      await writer.write(data);
+      writer.releaseLock();
+    }
+  }
+
   const handleConfirmPayment = () => {
     setError('');
 
@@ -164,7 +178,7 @@ export default function PaymentDialog({
           onClose();
 
           setTimeout(() => {
-            reactToPrintFn();
+            print_receipt()
             router.visit(route('pos'));
           }, 500);
         }
@@ -178,7 +192,7 @@ export default function PaymentDialog({
       }
     });
     onClose();
-    reactToPrintFn();
+    print_receipt();
   };
 
   const handlePaymentMethodChange = (method: string) => {
@@ -339,127 +353,6 @@ export default function PaymentDialog({
                   <><MdFileDownload /> Confirm & Save PDF</>
                 </Button>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Receipt for printing */}
-      <div className="hidden">
-        <div ref={contentRef} className="p-4 bg-white text-black w-[80mm]">
-          <img src="./images/TD-Logo.png" alt="logo" className="mx-auto w-16 py-4" />
-          <div className="flex flex-col justify-center items-center gap-2">
-            <h4 className="font-semibold">{orderData?.branch?.name || branchName}</h4>
-            <p className="text-xs text-center">{orderData?.branch?.location || branchLocation}</p>
-          </div>
-          <div className="flex flex-col gap-3 border-b py-6 text-xs">
-            <p className="flex justify-between">
-              <span className="text-gray-400">Cashier:</span>
-              <span>{orderData?.cashier?.name || cashierName}</span>
-            </p>
-            <p className="flex justify-between">
-              <span className="text-gray-400">Date:</span>
-              <span>
-                {orderData
-                  ? new Date(orderData.order_date).toLocaleString()
-                  : new Date().toLocaleString()}
-              </span>
-            </p>
-            {orderData && (
-              <p className="flex justify-between">
-                <span className="text-gray-400">Order #:</span>
-                <span>{orderData.id}</span>
-              </p>
-            )}
-            <p className="flex justify-between">
-              <span className="text-gray-400">Payment:</span>
-              <span>{paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}</span>
-            </p>
-            {paymentMethod === 'cash' && (
-              <>
-                <p className="flex justify-between">
-                  <span className="text-gray-400">Amount Received:</span>
-                  <span>M{parseFloat(amountReceived).toFixed(2)}</span>
-                </p>
-                <p className="flex justify-between">
-                  <span className="text-gray-400">Change:</span>
-                  <span>M{parseFloat(changeAmount).toFixed(2)}</span>
-                </p>
-              </>
-            )}
-            {(paymentMethod === 'card' || paymentMethod === 'mobile') && paymentReference && (
-              <p className="flex justify-between">
-                <span className="text-gray-400">Reference:</span>
-                <span>{paymentReference}</span>
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col gap-3 pb-6 pt-2 text-xs">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="flex">
-                  <th className="w-full py-2">Product</th>
-                  <th className="min-w-[44px] py-2">QTY</th>
-                  <th className="min-w-[44px] py-2">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orderData
-                  ? orderData.items.map((item) => (
-                    <tr key={item.product_id} className="flex py-1">
-                      <td className="flex-1">{item.product.product_name}</td>
-                      <td className="min-w-[44px]">{item.quantity}</td>
-                      <td className="min-w-[44px]">M{item.subtotal.toFixed(2)}</td>
-                    </tr>
-                  ))
-                  : cart.map((item) => (
-                    <tr key={item.id} className="flex py-1">
-                      <td className="flex-1">{item.product.product_name}</td>
-                      <td className="min-w-[44px]">{item.quantity}</td>
-                      <td className="min-w-[44px]">M{(item.product.product_price * item.quantity).toFixed(2)}</td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-            <div className="border-b border border-dashed"></div>
-            <div className="flex flex-col gap-1 pt-4 text-sm">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>
-                  {orderData
-                    ? `M${orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}`
-                    : `M${subtotal.toFixed(2)}`
-                  }
-                </span>
-              </div>
-              {(orderData
-                ? orderData.items.some(item => item.discount > 0)
-                : totalDiscount > 0
-              ) && (
-                  <div className="flex justify-between text-red-500">
-                    <span>Discount:</span>
-                    <span>
-                      {orderData
-                        ? `-M${orderData.items.reduce((sum, item) => sum + item.discount, 0).toFixed(2)}`
-                        : `-M${totalDiscount.toFixed(2)}`
-                      }
-                    </span>
-                  </div>
-                )}
-              <div className="flex justify-between font-bold">
-                <span>Total:</span>
-                <span>
-                  {orderData
-                    ? `M${orderData.total_amount.toFixed(2)}`
-                    : `M${total.toFixed(2)}`
-                  }
-                </span>
-              </div>
-            </div>
-            <div className="pt-8 text-center text-xs">
-              <p>Thank you for your purchase!</p>
-              <p className="mt-2">Please come again</p>
             </div>
           </div>
         </div>

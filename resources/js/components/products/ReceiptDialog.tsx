@@ -1,8 +1,6 @@
-import React from 'react';
-import { FaPhone, FaEnvelope, FaPrint } from 'react-icons/fa';
-import { MdReceipt, MdPerson, MdRestaurant, MdAccessTime } from 'react-icons/md';
-import { useReactToPrint } from 'react-to-print';
-import jsPDF from 'jspdf';
+import { usePos } from '@/contexts/CartContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Printer,  Br, Cut, Line, Row, Text, } from 'react-thermal-printer';
 
 interface OrderItem {
     product_id: number;
@@ -20,11 +18,19 @@ interface Order {
     total_amount: number;
     order_date: string;
     items: OrderItem[];
-    branch_name?: string;
-    cashier_name?: string;
-    customer_name?: string;
-    order_type?: string;
+    branch: {
+        name: string;
+        location: string;
+    };
+    cashier: {
+        name: string;
+    };
+    payment_method: string;
+    payment_reference: string;
+    amount_received: number;
+    change_amount: number;
 }
+
 
 interface ReceiptProps {
     order: Order;
@@ -33,253 +39,149 @@ interface ReceiptProps {
     onPrintComplete?: () => void;
 }
 
-export const Receipt: React.FC<ReceiptProps> = ({ order, branchName, cashierName, onPrintComplete }) => {
-    const receiptRef = React.useRef<HTMLDivElement>(null);
+export const ReceiptDialog: React.FC<ReceiptProps> = ({ order }) => {
+    const { cart, calculateTotals } = usePos();
+    const { subtotal, totalDiscount, total } = calculateTotals();
+    const [paymentMethod, setPaymentMethod] = useState('');
+    const [amountReceived, setAmountReceived] = useState(total.toString());
+    const [changeAmount, setChangeAmount] = useState('0.00');
+    const [paymentReference, setPaymentReference] = useState('');
 
-    // Fix: Using correct type for useReactToPrint
-    const handlePrint = useReactToPrint({
-        // Fix: Changed 'content' to 'contentRef' which returns a reference
-        contentRef: () => receiptRef.current,
-        onAfterPrint: onPrintComplete,
-        pageStyle: `
-            @page {
-                size: 80mm 200mm;
-                margin: 5mm;
-            }
-            @media print {
-                body {
-                    width: 80mm;
-                }
-                .no-print {
-                    display: none;
-                }
-            }
-        `,
-        documentTitle: `Receipt_${order.id}`
-    });
+    useEffect(() => {
+        setAmountReceived(total.toString());
+    }, [total]);
 
-    const formattedDate = new Date(order.order_date).toLocaleString();
+    const calculateChange = useCallback(() => {
+        const received = parseFloat(amountReceived) || 0;
+        const change = received - total;
+        setChangeAmount(change > 0 ? change.toFixed(2) : '0.00');
+    }, [amountReceived, total]);
 
+    useEffect(() => {
+        calculateChange();
+    }, [amountReceived, total, calculateChange]);
+    
     return (
-        <div className="flex flex-col items-center p-4">
-            <div
-                ref={receiptRef}
-                className="w-80 rounded bg-gray-50 px-6 pt-8 shadow-lg print:shadow-none print:border print:border-gray-200"
-            >
-                {/* Logo and Business Info */}
-                <div className="flex flex-col justify-center items-center gap-2">
-                    <h4 className="font-semibold text-lg">Your Restaurant Name</h4>
-                    <p className="text-xs">{branchName}</p>
-                </div>
-
-                {/* Order Details */}
-                <div className="flex flex-col gap-3 border-b py-6 text-xs">
-                    <p className="flex justify-between">
-                        <span className="text-gray-400 flex items-center gap-1">
-                            <MdReceipt />
-                            Receipt No.:
-                        </span>
-                        <span>#{order.id}</span>
-                    </p>
-                    <p className="flex justify-between">
-                        <span className="text-gray-400 flex items-center gap-1">
-                            <MdRestaurant />
-                            Order Type:
-                        </span>
-                        <span>{order.order_type || 'Dine-in'}</span>
-                    </p>
-                    <p className="flex justify-between">
-                        <span className="text-gray-400 flex items-center gap-1">
-                            <MdPerson />
-                            Cashier:
-                        </span>
-                        <span>{cashierName}</span>
-                    </p>
-                    <p className="flex justify-between">
-                        <span className="text-gray-400 flex items-center gap-1">
-                            <MdPerson />
-                            Customer:
-                        </span>
-                        <span>{order.customer_name || 'Walk-in'}</span>
-                    </p>
-                    <p className="flex justify-between">
-                        <span className="text-gray-400 flex items-center gap-1">
-                            <MdAccessTime />
-                            Date:
-                        </span>
-                        <span>{formattedDate}</span>
-                    </p>
-                </div>
-
-                {/* Items Table */}
-                <div className="flex flex-col gap-3 pb-6 pt-2 text-xs">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="flex">
-                                <th className="w-full py-2">Product</th>
-                                <th className="min-w-[44px] py-2">QTY</th>
-                                <th className="min-w-[44px] py-2">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {order.items.map((item, index) => (
-                                <React.Fragment key={index}>
-                                    <tr className="flex">
-                                        <td className="flex-1 py-1">{item.product.product_name}</td>
-                                        <td className="min-w-[44px]">{item.quantity}</td>
-                                        <td className="min-w-[44px]">M{(item.price * item.quantity).toFixed(2)}</td>
-                                    </tr>
-                                    {item.discount > 0 && (
-                                        <tr className="flex py-1">
-                                            <td className="flex-1 text-red-500 pl-4">Discount</td>
-                                            <td className="min-w-[44px]"></td>
-                                            <td className="min-w-[44px] text-red-500">-M{item.discount.toFixed(2)}</td>
+        <div className="hidden">
+            <Printer width={48} debug={true} type={'epson'}>
+                <div className="p-4 bg-white text-black w-[80mm]">
+                    <img src="./images/TD-Logo.png" alt="logo" className="mx-auto w-16 py-4" />
+                    <Row className="flex flex-col justify-center items-center gap-2">
+                        <Text className="font-semibold">{order?.branch?.name}</Text>
+                        <Text className="text-xs text-center">{order?.branch?.location}</Text>
+                    </Row>
+                    <div className="flex flex-col gap-3 border-b py-6 text-xs">
+                        <p className="flex justify-between">
+                            <span className="text-gray-400">Cashier:</span>
+                            <span>{order?.cashier?.name}</span>
+                        </p>
+                        <p className="flex justify-between">
+                            <span className="text-gray-400">Date:</span>
+                            <span>
+                                {order
+                                    ? new Date(order.order_date).toLocaleString()
+                                    : new Date().toLocaleString()}
+                            </span>
+                        </p>
+                        {order && (
+                            <p className="flex justify-between">
+                                <span className="text-gray-400">Order #:</span>
+                                <span>{order.id}</span>
+                            </p>
+                        )}
+                        <p className="flex justify-between">
+                            <span className="text-gray-400">Payment:</span>
+                            <span>{paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}</span>
+                        </p>
+                        {paymentMethod === 'cash' && (
+                            <>
+                                <p className="flex justify-between">
+                                    <span className="text-gray-400">Amount Received:</span>
+                                    <span>M{parseFloat(amountReceived).toFixed(2)}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span className="text-gray-400">Change:</span>
+                                    <span>M{parseFloat(changeAmount).toFixed(2)}</span>
+                                </p>
+                            </>
+                        )}
+                        {(paymentMethod === 'card' || paymentMethod === 'mobile') && paymentReference && (
+                            <p className="flex justify-between">
+                                <span className="text-gray-400">Reference:</span>
+                                <span>{paymentReference}</span>
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex flex-col gap-3 pb-6 pt-2 text-xs">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="flex">
+                                    <th className="w-full py-2">Product</th>
+                                    <th className="min-w-[44px] py-2">QTY</th>
+                                    <th className="min-w-[44px] py-2">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {order
+                                    ? order.items.map((item) => (
+                                        <tr key={item.product_id} className="flex py-1">
+                                            <td className="flex-1">{item.product.product_name}</td>
+                                            <td className="min-w-[44px]">{item.quantity}</td>
+                                            <td className="min-w-[44px]">M{item.subtotal.toFixed(2)}</td>
                                         </tr>
-                                    )}
-                                </React.Fragment>
-                            ))}
-                        </tbody>
-                    </table>
-                    <div className="border-b border border-dashed"></div>
-                    <div className="flex justify-between py-2 font-semibold">
-                        <span>Total:</span>
-                        <span>M{order.total_amount.toFixed(2)}</span>
+                                    ))
+                                    : cart.map((item) => (
+                                        <tr key={item.id} className="flex py-1">
+                                            <td className="flex-1">{item.product.product_name}</td>
+                                            <td className="min-w-[44px]">{item.quantity}</td>
+                                            <td className="min-w-[44px]">M{(item.product.product_price * item.quantity).toFixed(2)}</td>
+                                        </tr>
+                                    ))
+                                }
+                            </tbody>
+                        </table>
+                        <div className="border-b border border-dashed"></div>
+                        <div className="flex flex-col gap-1 pt-4 text-sm">
+                            <div className="flex justify-between">
+                                <span>Subtotal:</span>
+                                <span>
+                                    {order
+                                        ? `M${order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}`
+                                        : `M${subtotal.toFixed(2)}`
+                                    }
+                                </span>
+                            </div>
+                            {(order
+                                ? order.items.some(item => item.discount > 0)
+                                : totalDiscount > 0
+                            ) && (
+                                    <div className="flex justify-between text-red-500">
+                                        <span>Discount:</span>
+                                        <span>
+                                            {order
+                                                ? `-M${order.items.reduce((sum, item) => sum + item.discount, 0).toFixed(2)}`
+                                                : `-M${totalDiscount.toFixed(2)}`
+                                            }
+                                        </span>
+                                    </div>
+                                )}
+                            <div className="flex justify-between font-bold">
+                                <span>Total:</span>
+                                <span>
+                                    {order
+                                        ? `M${order.total_amount.toFixed(2)}`
+                                        : `M${total.toFixed(2)}`
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                        <div className="pt-8 text-center text-xs">
+                            <p>Thank you for your purchase!</p>
+                            <p className="mt-2">Please come again</p>
+                        </div>
                     </div>
                 </div>
-
-                {/* Footer */}
-                <div className="py-4 justify-center items-center flex flex-col gap-2 text-xs pb-6">
-                    <p className="flex gap-2 items-center">
-                        <FaEnvelope /> info@example.com
-                    </p>
-                    <p className="flex gap-2 items-center">
-                        <FaPhone /> +266 1234 5678
-                    </p>
-                    <p className="text-center text-gray-500 mt-2">
-                        Thank you for your purchase!
-                    </p>
-                </div>
-            </div>
-
-            {/* Print Button - hidden when printing */}
-            <button
-                onClick={(e) => {
-                    e.preventDefault();
-                    handlePrint();
-                }}
-                className="no-print mt-4 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded flex items-center gap-2"
-            >
-                <FaPrint /> Print Receipt
-            </button>
+            </Printer>
         </div>
     );
 };
-
-export function generateReceiptPdf({ order, branchName, cashierName }: ReceiptProps) {
-    const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [80, 297] // A4 height for longer receipts
-    });
-
-    // Set initial position
-    let yPos = 10;
-
-    // Add header
-    pdf.setFontSize(14);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text('Your Restaurant Name', 40, yPos, { align: 'center' });
-    yPos += 5;
-
-    pdf.setFontSize(10);
-    pdf.text(branchName, 40, yPos, { align: 'center' });
-    yPos += 10;
-
-    // Add order details
-    pdf.setFontSize(8);
-    pdf.setTextColor(100, 100, 100);
-    pdf.text('Receipt No.:', 5, yPos);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(`#${order.id}`, 30, yPos);
-    yPos += 5;
-
-    pdf.setTextColor(100, 100, 100);
-    pdf.text('Order Type:', 5, yPos);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(order.order_type || 'Dine-in', 30, yPos);
-    yPos += 5;
-
-    pdf.setTextColor(100, 100, 100);
-    pdf.text('Cashier:', 5, yPos);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(cashierName, 30, yPos);
-    yPos += 5;
-
-    pdf.setTextColor(100, 100, 100);
-    pdf.text('Customer:', 5, yPos);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(order.customer_name || 'Walk-in', 30, yPos);
-    yPos += 5;
-
-    pdf.setTextColor(100, 100, 100);
-    pdf.text('Date:', 5, yPos);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(new Date(order.order_date).toLocaleString(), 30, yPos);
-    yPos += 10;
-
-    // Add items table header
-    pdf.setDrawColor(0, 0, 0);
-    pdf.line(5, yPos, 75, yPos);
-    yPos += 5;
-
-    pdf.setFontSize(8);
-    pdf.text('Product', 5, yPos);
-    pdf.text('Qty', 50, yPos);
-    pdf.text('Total', 75, yPos, { align: 'right' });
-    yPos += 3;
-
-    pdf.line(5, yPos, 75, yPos);
-    yPos += 5;
-
-    // Add items
-    order.items.forEach((item) => {
-        pdf.text(`${item.product.product_name}`, 5, yPos);
-        pdf.text(`${item.quantity}`, 50, yPos);
-        pdf.text(`M${(item.price * item.quantity).toFixed(2)}`, 75, yPos, { align: 'right' });
-        yPos += 5;
-
-        if (item.discount > 0) {
-            pdf.setTextColor(255, 0, 0);
-            pdf.text(`Discount`, 5, yPos);
-            pdf.text(`-M${item.discount.toFixed(2)}`, 75, yPos, { align: 'right' });
-            pdf.setTextColor(0, 0, 0);
-            yPos += 5;
-        }
-    });
-
-    yPos += 5;
-    pdf.line(5, yPos, 75, yPos);
-    yPos += 5;
-
-    // Add totals
-    pdf.setFontSize(10);
-    pdf.text('Total:', 5, yPos);
-    pdf.text(`M${order.total_amount.toFixed(2)}`, 75, yPos, { align: 'right' });
-    yPos += 10;
-
-    // Add footer
-    pdf.setFontSize(8);
-    pdf.setTextColor(100, 100, 100);
-    pdf.text('info@example.com', 40, yPos, { align: 'center' });
-    yPos += 5;
-    pdf.text('+266 1234 5678', 40, yPos, { align: 'center' });
-    yPos += 5;
-    pdf.text('Thank you for your purchase!', 40, yPos, { align: 'center' });
-
-    return pdf;
-}
-
-export function saveReceiptPdf(props: ReceiptProps) {
-    const pdf = generateReceiptPdf(props);
-    pdf.save(`receipt-${props.order.id}.pdf`);
-}
